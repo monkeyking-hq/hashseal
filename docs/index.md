@@ -25,22 +25,22 @@ description: Seal and verify AI instruction files and build trees — what was s
 </section>
 
 <section class="section">
-  <h2>Two product lines</h2>
+  <h2>Two Paths</h2>
   <div class="grid-2">
     <article class="card card--lead">
-      <span class="lead-label">Lead</span>
-      <h3><a href="{{ '/instruct/' | relative_url }}">Agent instruction file integrity seal</a></h3>
+      <span class="lead-label">Sealed, Verifiable, Agent Instruction Files</span>
+      <h3><a href="{{ '/instruct/' | relative_url }}">Agent instruction file integrity sealing</a></h3>
       <p>
-        Seal <code>AGENTS.md</code>, skills, and other instruct files with a BLAKE3 digest
-        (optional GPG via git’s signing setup). Check before models or agents run.
+        Seal <code>AGENTS.md</code>, skills, and other AI instruction files with a [BLAKE3 digest](https://en.wikipedia.org/wiki/BLAKE_(hash_function)#BLAKE3 "Wikipedia link")
+        with optional GPG via git’s signing credentials. The idea is simple; Check instruction file integrity before sending them to models or agents to run.  Sign your instructions so that your users can verify and trust that they are exactly what you intended to deliver.
       </p>
     </article>
     <article class="card">
-      <span class="lead-label">Second</span>
-      <h3><a href="{{ '/build/' | relative_url }}">Build tools</a></h3>
+      <span class="lead-label">Secure your CI and Build Chains</span>
+      <h3><a href="{{ '/build/' | relative_url }}">Multi Language build system tools to sign and seal your entire build system</a></h3>
       <p>
         Tree ledgers, release bundles (<code>hashseal-bundle/</code>), and thin plugins
-        so CI and multi-agent builds cannot silently rewrite what you ship.
+        so CI and multi-agent builds cannot silently rewrite what you ship.  Stop multi-agent workflows from accidentally altering build chains mid-stream. Ship builds with artifacts that can be verified by anyone.
       </p>
     </article>
   </div>
