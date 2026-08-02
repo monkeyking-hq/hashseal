@@ -3,7 +3,13 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-/// Default directory names always skipped when walking.
+/// Directory basenames never entered during a walk (performance + correctness).
+///
+/// Includes build/deps caches and **agent git-worktree containers**. Tools such as
+/// Claude Code place full checkouts under `.claude/worktrees/<name>/`; other agents
+/// use `.worktrees/` or a top-level `worktrees/`. Crawling those re-walks entire
+/// nested trees (and often `node_modules` / `target` inside each) and is a common
+/// multi-minute hang — skip by directory name before descending.
 pub fn is_skipped_dir_name(name: &str) -> bool {
     matches!(
         name,
@@ -15,6 +21,9 @@ pub fn is_skipped_dir_name(name: &str) -> bool {
             | "vendor"
             | ".hashseal"
             | "hashseal-bundle"
+            // Agent / IDE parallel worktree containers (never crawl nested checkouts)
+            | "worktrees"
+            | ".worktrees"
     )
 }
 
@@ -191,5 +200,50 @@ mod tests {
     fn glob_mdc_ext() {
         assert!(glob_match("**/*.mdc", ".cursor/rules/a.mdc"));
         assert!(!glob_match("**/*.mdc", "a.md"));
+    }
+
+    #[test]
+    fn skips_agent_worktree_dir_names() {
+        assert!(is_skipped_dir_name("worktrees"));
+        assert!(is_skipped_dir_name(".worktrees"));
+        assert!(is_skipped_dir_name(".git"));
+        assert!(!is_skipped_dir_name(".claude"));
+        assert!(!is_skipped_dir_name("skills"));
+    }
+
+    #[test]
+    fn walk_does_not_descend_into_worktrees() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        // Real instruct path under .claude (should be found)
+        let skill = root.join(".claude").join("skills").join("x");
+        fs::create_dir_all(&skill).unwrap();
+        fs::write(skill.join("SKILL.md"), "# skill\n").unwrap();
+        // Nested worktree checkout (must not be walked)
+        let wt = root
+            .join(".claude")
+            .join("worktrees")
+            .join("agent-1")
+            .join(".claude")
+            .join("skills")
+            .join("nested");
+        fs::create_dir_all(&wt).unwrap();
+        fs::write(wt.join("SKILL.md"), "# nested should be skipped\n").unwrap();
+        // Root .worktrees container
+        let root_wt = root.join(".worktrees").join("other").join("pkg");
+        fs::create_dir_all(&root_wt).unwrap();
+        fs::write(root_wt.join("AGENTS.md"), "# skip\n").unwrap();
+
+        let found = walk_files(root, |rel| rel.ends_with(".md")).unwrap();
+        let rels: Vec<_> = found
+            .iter()
+            .map(|p| {
+                p.strip_prefix(root)
+                    .unwrap()
+                    .to_string_lossy()
+                    .replace('\\', "/")
+            })
+            .collect();
+        assert_eq!(rels, vec![".claude/skills/x/SKILL.md".to_string()]);
     }
 }

@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:ccb06a0a6ae2f9af20b20f2ec9bf26b954f08863b963aec970a402ddd43e4ef1"
+hashseal: "blake3:550bab70c20571a99b0f62452b7e3e693e10fc77e44a61b8b43961cbcab7d8cd"
 ---
 # AGENTS.md — HashSeal workspace
 
@@ -76,3 +76,5 @@ Pre-commit runs rustfmt when staged `.rs` files exist. Hook lives at `scripts/gi
 ### Instruct defaults
 
 `document.include` defaults to agent instruction surfaces (`AGENTS.md`, `CLAUDE.md`, Copilot/Cursor/skill dirs, …), not `**/*.md`. See `DEFAULT_DOCUMENT_INCLUDES` in `rust/hashseal-core/src/config.rs` and `docs/cli.md`. Override with `.hashseal.json` include/exclude.
+
+Walk **never descends** into `worktrees` / `.worktrees` directory names (agent git-worktree containers such as `.claude/worktrees/`) — hard skip for performance, same as `target` / `node_modules`.

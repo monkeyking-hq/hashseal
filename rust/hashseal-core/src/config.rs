@@ -145,20 +145,34 @@ pub fn default_document_includes() -> Vec<String> {
         .collect()
 }
 
+/// Default tree/document exclude globs (caches, bundles, agent worktree containers).
+pub const DEFAULT_TREE_EXCLUDES: &[&str] = &[
+    "**/.git/**",
+    "**/target/**",
+    "**/node_modules/**",
+    "**/build/**",
+    "**/dist/**",
+    "**/vendor/**",
+    "**/.hashseal/**",
+    "**/hashseal-bundle/**",
+    // Nested agent checkouts (Claude `.claude/worktrees/`, root `.worktrees/`, etc.)
+    "**/worktrees/**",
+    "**/.worktrees/**",
+];
+
+/// Owned copy of [`DEFAULT_TREE_EXCLUDES`].
+pub fn default_tree_excludes() -> Vec<String> {
+    DEFAULT_TREE_EXCLUDES
+        .iter()
+        .map(|s| (*s).to_string())
+        .collect()
+}
+
 impl Default for TreeConfig {
     fn default() -> Self {
         Self {
             include: vec!["**/*".into()],
-            exclude: vec![
-                "**/.git/**".into(),
-                "**/target/**".into(),
-                "**/node_modules/**".into(),
-                "**/build/**".into(),
-                "**/dist/**".into(),
-                "**/vendor/**".into(),
-                "**/.hashseal/**".into(),
-                "**/hashseal-bundle/**".into(),
-            ],
+            exclude: default_tree_excludes(),
             line_endings: "lf-text".into(),
             algorithm: "blake3".into(),
             ledger: None,
@@ -172,7 +186,7 @@ impl Default for DocumentConfig {
         Self {
             enable: true,
             include: default_document_includes(),
-            exclude: TreeConfig::default().exclude,
+            exclude: default_tree_excludes(),
             canonical: "full".into(),
             field: "hashseal".into(),
             auto_frontmatter: true,
@@ -424,5 +438,15 @@ mod tests {
         assert!(!d.include.is_empty());
         assert!(d.include.iter().any(|p| p == "**/AGENTS.md"));
         assert!(!d.include.iter().any(|p| p == "**/*.md"));
+    }
+
+    #[test]
+    fn default_excludes_cover_worktree_containers() {
+        assert!(DEFAULT_TREE_EXCLUDES.contains(&"**/worktrees/**"));
+        assert!(DEFAULT_TREE_EXCLUDES.contains(&"**/.worktrees/**"));
+        let tree = TreeConfig::default();
+        assert!(tree.exclude.iter().any(|p| p == "**/worktrees/**"));
+        let doc = DocumentConfig::default();
+        assert!(doc.exclude.iter().any(|p| p == "**/.worktrees/**"));
     }
 }

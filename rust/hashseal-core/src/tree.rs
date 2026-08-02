@@ -73,16 +73,7 @@ impl Default for TreeSealOptions {
         Self {
             algorithm: Algorithm::Blake3,
             include: vec!["**/*".into()],
-            exclude: vec![
-                "**/.git/**".into(),
-                "**/target/**".into(),
-                "**/node_modules/**".into(),
-                "**/build/**".into(),
-                "**/dist/**".into(),
-                "**/vendor/**".into(),
-                "**/.hashseal/**".into(),
-                "**/hashseal-bundle/**".into(),
-            ],
+            exclude: crate::config::default_tree_excludes(),
             line_endings_lf_text: true,
         }
     }
@@ -142,20 +133,8 @@ fn path_excluded(rel: &str, exclude: &[String]) -> bool {
     if any_glob(exclude, rel) {
         return true;
     }
-    // component-level skip
-    rel.split('/').any(|c| {
-        matches!(
-            c,
-            ".git"
-                | "target"
-                | "node_modules"
-                | "dist"
-                | "build"
-                | "vendor"
-                | ".hashseal"
-                | "hashseal-bundle"
-        )
-    })
+    // component-level skip (keep in sync with walk::is_skipped_dir_name)
+    rel.split('/').any(crate::walk::is_skipped_dir_name)
 }
 
 pub fn collect_tree_files(root: &Path, opts: &TreeSealOptions) -> Result<Vec<PathBuf>> {

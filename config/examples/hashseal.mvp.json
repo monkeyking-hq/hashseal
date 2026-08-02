@@ -65,7 +65,9 @@
       "**/dist/**",
       "**/vendor/**",
       "**/.hashseal/**",
-      "**/hashseal-bundle/**"
+      "**/hashseal-bundle/**",
+      "**/worktrees/**",
+      "**/.worktrees/**"
     ],
     "canonical": "full",
     "field": "hashseal",
@@ -79,7 +81,9 @@
       "**/target/**",
       "**/node_modules/**",
       "**/hashseal-bundle/**",
-      "**/.hashseal/**"
+      "**/.hashseal/**",
+      "**/worktrees/**",
+      "**/.worktrees/**"
     ],
     "line_endings": "lf-text",
     "algorithm": "blake3"

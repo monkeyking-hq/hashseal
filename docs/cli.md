@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:981b60bcc3f6272a04fd431c7b2209ae7ab64a0ee2239839a5cf025b26a19b89"
+hashseal: "blake3:d13425edc7f06267692cc81185456d2fd2c59843a2b49d70865d26d812b463b3"
 ---
 # HashSeal CLI reference
 
@@ -33,7 +33,7 @@ Relevant keys:
 |------|---------|
 | `document.enable` | Seal/check instruct files |
 | `document.include` | Globs for instruct files (see [default instruct includes](#default-instruct-includes)) |
-| `document.exclude` | Globs to skip (defaults match tree excludes: `target`, `node_modules`, …) |
+| `document.exclude` | Globs to skip (defaults match tree excludes: `target`, `node_modules`, agent `worktrees` / `.worktrees`, …) |
 | `document.canonical` | `full` (default) or `body-only` |
 | `document.field` | Seal field name (default `hashseal`) |
 | `tree.include` / `tree.exclude` | Tree seal walk |
@@ -55,6 +55,10 @@ Defaults target **agent instruction surfaces**, not every Markdown file. README 
 Full default list: `DEFAULT_DOCUMENT_INCLUDES` in `hashseal-core` (`rust/hashseal-core/src/config.rs`) and the example overlay [`config/examples/hashseal.mvp.json`](../config/examples/hashseal.mvp.json).
 
 **Customize:** set `document.include` and/or `document.exclude` in `.hashseal.json` — replace includes entirely, or narrow/expand relative to your workflow. To seal *all* Markdown again: `"include": ["**/*.md"]`.
+
+### Default walk skips (performance)
+
+Directory basenames **`worktrees`** and **`.worktrees`** are never entered when walking (same class of hard skip as `target` / `node_modules`). That covers Claude Code’s `.claude/worktrees/<name>/` nested checkouts, root `.worktrees/`, and similar agent parallel-worktree layouts. Without this, instruct/tree scans re-crawl full nested trees and can hang for minutes.
 
 ## Commands
 
