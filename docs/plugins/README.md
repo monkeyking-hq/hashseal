@@ -36,7 +36,7 @@ Install story: [`docs/install.md`](../install.md).
 | Plugin | Path | Status |
 |--------|------|--------|
 | npm | [`plugins/npm`](../../plugins/npm) | Skeleton — `hashseal-npm` + JS API |
-| Maven | [`plugins/maven`](../../plugins/maven) | Skeleton — `seal` / `check` / `verify` goals |
+| Maven | [`plugins/maven`](../../plugins/maven) | Skeleton — `seal` / `check` / `verify` goals; Central via [`java/`](../../java/) (`-Pcentral`, server `hashseal-central`) |
 | Gradle | [`plugins/gradle`](../../plugins/gradle) | Skeleton — `hashsealSeal` / `Check` / `Verify` (includeBuild) |
 | Cargo | [`plugins/cargo`](../../plugins/cargo) | Aliases + docs (no separate crate) |
 | Python | [`plugins/python`](../../plugins/python) | Reserved / empty |

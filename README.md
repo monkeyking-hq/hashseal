@@ -192,7 +192,8 @@ If the binary already lives on PATH (for example after `cargo install --path rus
 | Core library | `rust/hashseal-core` | crate README |
 | Tiny check binary | `rust/hashseal-check` | optional instruct-only verify (blake3 path) |
 | npm plugin | `plugins/npm` | [plugins hub](docs/build/index.md) · [npm README](plugins/npm/README.md) |
-| Maven | `plugins/maven` | [Maven README](plugins/maven/README.md) |
+| Maven plugin | `plugins/maven` | [Maven README](plugins/maven/README.md) |
+| Java verify SDK | `verify/java` | `ai.hashseal:hashseal-verify` · [Java README](verify/java/README.md) · [reactor](java/README.md) |
 | Gradle | `plugins/gradle` | [Gradle README](plugins/gradle/README.md) |
 | Cargo aliases | `plugins/cargo` | [Cargo README](plugins/cargo/README.md) |
 | Packaging / releases | scripts + CI | [packaging](docs/packaging.md) · [install](docs/install.md) |
@@ -241,7 +242,8 @@ That sets `core.hooksPath=scripts/git-hooks` for this clone only. Fix failures w
 node verify/js/test/vectors.test.js
 node verify/js/test/tree-vectors.test.js
 python verify/python/test/test_vectors.py
-# Java / Go / Ruby / .NET — see verify/*/README.md
+mvn -f verify/java/pom.xml test
+# Go / Ruby / .NET — see verify/*/README.md
 ```
 
 ### Workspace layout
@@ -253,6 +255,7 @@ python verify/python/test/test_vectors.py
 | `rust/hashseal-check` | Tiny instruct verify binary (blake3-only) |
 | `rust/hashseal-wasm` | WASM verify for IDEs / browser |
 | `verify/` | Zero-dep language verify SDKs + vectors |
+| `java/` | Maven parent/reactor for `hashseal-verify` + Maven plugin (Central) |
 | `fixtures/mvp-demo/` | Human smoke project |
 | `config/examples/` | Sample `.hashseal.json` overlays |
 | `plugins/` | Maven, npm, Gradle, Cargo, … |

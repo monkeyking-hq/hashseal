@@ -13,7 +13,7 @@ In-process instruct (and tree, where implemented) check **without** the CLI. Pre
 |----------|------|------------------|--------|
 | JavaScript | `verify/js` | `node test/vectors.test.js` | Also powers browser extension bundle |
 | Python | `verify/python` | `python test/test_vectors.py` | |
-| Java | `verify/java` | see README | |
+| Java | `verify/java` | `mvn -f verify/java/pom.xml test` | Maven: `ai.hashseal:hashseal-verify` ([java reactor](../../java/)) |
 | Go | `verify/go` | `go test .` / `go run ./test/` | |
 | Ruby | `verify/ruby` | `ruby test/run_vectors.rb` | |
 | .NET | `verify/dotnet` | `dotnet run --project Hashseal.Verify.Test` | |

@@ -48,6 +48,18 @@ hashseal-0.1.0-x86_64-pc-windows-msvc.zip
 | `extensions/vscode` | Commands spawn CLI | Yes — `hashseal` or `hashseal-check` |
 | `hashseal-wasm` | WASM check | No native CLI |
 
+## Java / Maven Central
+
+Namespace: **`ai.hashseal`**. Reactor parent: [`java/pom.xml`](../java/pom.xml) (see [`java/README.md`](../java/README.md)).
+
+| Artifact | Module |
+|----------|--------|
+| `ai.hashseal:hashseal-java-parent` | `java/` |
+| `ai.hashseal:hashseal-verify` | `verify/java/` |
+| `ai.hashseal:hashseal-maven-plugin` | `plugins/maven/` |
+
+Portal server id in `settings.xml`: **`hashseal-central`**. Deploy profile: **`-Pcentral`** (sources + javadoc + GPG + `central-publishing-maven-plugin`). Versioning/tags: **`maven-release-plugin`** (`release:prepare` / `release:perform`, tag `hashseal-java-@{version}`). Operator-only — do not auto-publish from agent builds. See [`java/README.md`](../java/README.md).
+
 ## Size / deps policy
 
 - **`hashseal-check`**: `hashseal-core` check feature + blake3 only.

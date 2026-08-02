@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  hashseal-verify — zero-dependency pure Java instruct + tree check library.
+  Publish: mvn -f java/pom.xml release:prepare release:perform  (from monorepo root)
+
+  Copyright (c) 2026 MonkeyKing.dev
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>ai.hashseal</groupId>
+    <artifactId>hashseal-java-parent</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <relativePath>../../java/pom.xml</relativePath>
+  </parent>
+
+  <artifactId>hashseal-verify</artifactId>
+  <packaging>jar</packaging>
+
+  <name>HashSeal Verify</name>
+  <description>
+    Zero-dependency HashSeal instruct document and tree verifier (pure Java).
+    In-process check without the hashseal CLI. No Maven runtime dependencies.
+  </description>
+  <url>https://hashseal.ai/instruct/verify-sdks/</url>
+
+  <!-- Explicit Central metadata (self-contained if parent resolution is delayed) -->
+  <licenses>
+    <license>
+      <name>Apache License, Version 2.0</name>
+      <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
+  <developers>
+    <developer>
+      <name>MonkeyKing.dev</name>
+      <email>info@hashseal.ai</email>
+      <organization>MonkeyKing.dev</organization>
+      <organizationUrl>https://monkeyking.dev</organizationUrl>
+    </developer>
+  </developers>
+
+  <scm>
+    <connection>scm:git:https://github.com/monkeyking-hq/hashseal.git</connection>
+    <developerConnection>scm:git:ssh://git@github.com/monkeyking-hq/hashseal.git</developerConnection>
+    <url>https://github.com/monkeyking-hq/hashseal</url>
+    <tag>HEAD</tag>
+  </scm>
+
+  <issueManagement>
+    <system>GitHub</system>
+    <url>https://github.com/monkeyking-hq/hashseal/issues</url>
+  </issueManagement>
+
+  <build>
+    <!-- Keep non-Maven layout (src/, test/) for javac-friendly monorepo workflows -->
+    <sourceDirectory>src</sourceDirectory>
+    <testSourceDirectory>test</testSourceDirectory>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <configuration>
+          <archive>
+            <manifestEntries>
+              <Automatic-Module-Name>ai.hashseal.verify</Automatic-Module-Name>
+            </manifestEntries>
+          </archive>
+        </configuration>
+      </plugin>
+      <!--
+        Vector runners use main() + System.exit — must fork (exec:exec), not exec:java,
+        or System.exit kills the Maven JVM after the first suite.
+      -->
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>3.5.0</version>
+        <executions>
+          <execution>
+            <id>instruct-vectors</id>
+            <phase>test</phase>
+            <goals>
+              <goal>exec</goal>
+            </goals>
+            <configuration>
+              <skip>${skipTests}</skip>
+              <executable>java</executable>
+              <classpathScope>test</classpathScope>
+              <arguments>
+                <argument>-classpath</argument>
+                <classpath/>
+                <argument>RunVectors</argument>
+              </arguments>
+            </configuration>
+          </execution>
+          <execution>
+            <id>tree-vectors</id>
+            <phase>test</phase>
+            <goals>
+              <goal>exec</goal>
+            </goals>
+            <configuration>
+              <skip>${skipTests}</skip>
+              <executable>java</executable>
+              <classpathScope>test</classpathScope>
+              <arguments>
+                <argument>-classpath</argument>
+                <classpath/>
+                <argument>RunTreeVectors</argument>
+              </arguments>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <!-- No unit tests under surefire; vectors run via exec above -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.5.2</version>
+        <configuration>
+          <skipTests>true</skipTests>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>

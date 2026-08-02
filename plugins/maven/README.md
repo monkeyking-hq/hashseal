@@ -44,14 +44,22 @@ cargo build -p hashseal --release
 | `hashseal.sign` | seal: `--sign` |
 | `hashseal.requireSignature` | check: `--require-signature` |
 
-## Local install (skeleton)
+## Local install
+
+From monorepo root (preferred — uses shared parent):
+
+```bash
+mvn -f java/pom.xml clean install
+```
+
+Or only this plugin:
 
 ```bash
 cd plugins/maven
 mvn -q install -DskipTests
 ```
 
-Consumer (after local install):
+Consumer (after local install or Central publish):
 
 ```xml
 <plugin>
@@ -76,10 +84,25 @@ Or one-shot:
 mvn ai.hashseal:hashseal-maven-plugin:0.1.0-SNAPSHOT:check -Dhashseal.root=../../fixtures/mvp-demo
 ```
 
+## Maven Central
+
+Publishing is configured on the Java parent (`java/pom.xml`) with Portal server id **`hashseal-central`**.
+
+```bash
+# Manual version
+mvn -f java/pom.xml clean deploy -Pcentral
+
+# Version bump + tag + deploy (clean tree)
+mvn -f java/pom.xml release:prepare release:perform
+```
+
+See [`java/README.md`](../../java/README.md). Operator-only; agent builds do not publish unless requested.
+
 ## Notes
 
-- **Not published** to Maven Central from agent builds unless requested.
+- Wire-up for Central is present (`-Pcentral`); do **not** publish from agent builds unless requested.
 - Compile-time deps are Maven API only (`provided` scope).
+- In-app check library (no CLI): `ai.hashseal:hashseal-verify` under `verify/java`.
 - Failures surface CLI exit codes; the CLI prints every non-OK path.
 
 ```text

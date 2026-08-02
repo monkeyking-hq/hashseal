@@ -3,9 +3,11 @@ hashseal: "blake3:385376d28978c7a5155558a5a6b9048de5fe3d8b98f206d34e98fe1f7c92b2
 ---
 # hashseal-verify (Java)
 
-Zero-dependency HashSeal instruct document verifier (pure Java).
+Zero-dependency HashSeal instruct document + tree verifier (pure Java).
 
 **Signed, Sealed, Delivered - I'm Yours.**
+
+**Maven coordinates:** `ai.hashseal:hashseal-verify` (parent reactor: [`java/`](../../java/))
 
 ## Requirements
 
@@ -13,6 +15,20 @@ Zero-dependency HashSeal instruct document verifier (pure Java).
 - **No Maven runtime dependencies** for the verify library
 
 ## Build & test
+
+### Maven (preferred)
+
+From monorepo root:
+
+```bash
+mvn -f verify/java/pom.xml clean test
+# or whole Java reactor:
+mvn -f java/pom.xml clean install
+```
+
+Installs `ai.hashseal:hashseal-verify` to the local repo. Vector runners run in the `test` phase.
+
+### Manual javac (no Maven)
 
 From `verify/java/`:
 
@@ -34,11 +50,19 @@ java -cp out RunTreeVectors
 
 Uses frozen vectors at `../vectors/instruct-v1.json` and `../vectors/tree-v1.json`.
 
-Optional jar (still no external deps):
+## Consumer dependency
 
-```bash
-jar --create --file hashseal-verify.jar -C out ai
+After a Central publish (or local `mvn install`):
+
+```xml
+<dependency>
+  <groupId>ai.hashseal</groupId>
+  <artifactId>hashseal-verify</artifactId>
+  <version>0.1.0-SNAPSHOT</version> <!-- use a release version once published -->
+</dependency>
 ```
+
+Maven Central deploy is wired on the parent (`-Pcentral`, server id `hashseal-central`). Versioning/tags: `mvn -f java/pom.xml release:prepare release:perform`. See [`java/README.md`](../../java/README.md). Do not publish from agent builds unless asked.
 
 ## API
 
@@ -58,6 +82,7 @@ Tree.VerifyResult tv = Tree.verifyTreeInMemory(
 ```
 
 Digest check only (FULL canonical mode). GPG signature verification is not performed here.
+**This library does not seal** — use the `hashseal` CLI (or the Maven plugin) for seal.
 
 ## Vendor
 

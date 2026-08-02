@@ -46,6 +46,15 @@ node_modules/
 **/*.class
 verify/java/out/
 
+# maven-release-plugin working files
+release.properties
+**/pom.xml.releaseBackup
+**/pom.xml.tag
+**/pom.xml.next
+**/pom.xml.branch
+**/pom.xml.bak
+dependency-reduced-pom.xml
+
 # Python
 __pycache__/
 *.py[cod]

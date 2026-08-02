@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  HashSeal Java parent / reactor — shared version, metadata, and Maven Central wiring.
+  Server id in ~/.m2/settings.xml must be: hashseal-central
+
+  Copyright (c) 2026 MonkeyKing.dev
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>ai.hashseal</groupId>
+  <artifactId>hashseal-java-parent</artifactId>
+  <version>0.1.0-SNAPSHOT</version>
+  <packaging>pom</packaging>
+
+  <name>HashSeal Java Parent</name>
+  <description>Parent POM for HashSeal Java artifacts (verify SDK and build plugins)</description>
+  <url>https://hashseal.ai</url>
+  <inceptionYear>2026</inceptionYear>
+
+  <licenses>
+    <license>
+      <name>Apache License, Version 2.0</name>
+      <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
+  <developers>
+    <developer>
+      <name>MonkeyKing.dev</name>
+      <email>info@hashseal.ai</email>
+      <organization>MonkeyKing.dev</organization>
+      <organizationUrl>https://monkeyking.dev</organizationUrl>
+    </developer>
+  </developers>
+
+  <scm>
+    <connection>scm:git:https://github.com/monkeyking-hq/hashseal.git</connection>
+    <developerConnection>scm:git:ssh://git@github.com/monkeyking-hq/hashseal.git</developerConnection>
+    <url>https://github.com/monkeyking-hq/hashseal</url>
+    <tag>HEAD</tag>
+  </scm>
+
+  <issueManagement>
+    <system>GitHub</system>
+    <url>https://github.com/monkeyking-hq/hashseal/issues</url>
+  </issueManagement>
+
+  <modules>
+    <module>../verify/java</module>
+    <module>../plugins/maven</module>
+  </modules>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+    <maven.compiler.release>11</maven.compiler.release>
+    <!-- Central Publisher Portal server id (must match settings.xml) -->
+    <hashseal.central.serverId>hashseal-central</hashseal.central.serverId>
+    <central-publishing-maven-plugin.version>0.9.0</central-publishing-maven-plugin.version>
+    <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
+    <maven-source-plugin.version>3.3.1</maven-source-plugin.version>
+    <maven-javadoc-plugin.version>3.11.2</maven-javadoc-plugin.version>
+    <maven-gpg-plugin.version>3.2.7</maven-gpg-plugin.version>
+    <maven-jar-plugin.version>3.4.2</maven-jar-plugin.version>
+    <maven-release-plugin.version>3.1.1</maven-release-plugin.version>
+  </properties>
+
+  <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <version>${maven-compiler-plugin.version}</version>
+          <configuration>
+            <release>${maven.compiler.release}</release>
+          </configuration>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-jar-plugin</artifactId>
+          <version>${maven-jar-plugin.version}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-source-plugin</artifactId>
+          <version>${maven-source-plugin.version}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-javadoc-plugin</artifactId>
+          <version>${maven-javadoc-plugin.version}</version>
+          <configuration>
+            <release>${maven.compiler.release}</release>
+            <doclint>none</doclint>
+            <quiet>true</quiet>
+          </configuration>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-gpg-plugin</artifactId>
+          <version>${maven-gpg-plugin.version}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.sonatype.central</groupId>
+          <artifactId>central-publishing-maven-plugin</artifactId>
+          <version>${central-publishing-maven-plugin.version}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-release-plugin</artifactId>
+          <version>${maven-release-plugin.version}</version>
+          <configuration>
+            <!-- Monorepo: tag only the Java line so tags do not look like whole-product tags -->
+            <tagNameFormat>hashseal-java-@{project.version}</tagNameFormat>
+            <autoVersionSubmodules>true</autoVersionSubmodules>
+            <!-- Do not activate the default "release" profile; we use "central" -->
+            <useReleaseProfile>false</useReleaseProfile>
+            <releaseProfiles>central</releaseProfiles>
+            <goals>deploy</goals>
+            <!-- Avoid remote re-clone of monorepo; use the local git tree -->
+            <localCheckout>true</localCheckout>
+            <pushChanges>true</pushChanges>
+            <scmCommentPrefix>[hashseal-java-release] </scmCommentPrefix>
+            <!-- release:prepare still needs a clean tree; ignore local-only planning -->
+            <checkModificationExcludes>
+              <checkModificationExclude>**/.hashseal-local/**</checkModificationExclude>
+            </checkModificationExcludes>
+          </configuration>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-release-plugin</artifactId>
+      </plugin>
+    </plugins>
+  </build>
+
+  <!--
+    Activate for Maven Central Portal deploy (requires credentials + GPG):
+
+      mvn -f java/pom.xml clean deploy -Pcentral
+
+    Or full version bump + tag + deploy (clean git tree required):
+
+      mvn -f java/pom.xml release:prepare release:perform
+
+    settings.xml server id must be hashseal-central (token user/password from
+    https://central.sonatype.com ). GPG must be available for signing.
+    autoPublish defaults false — finish publish in the Portal UI unless you
+    pass -Dhashseal.central.autoPublish=true.
+  -->
+  <profiles>
+    <profile>
+      <id>central</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-source-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>attach-sources</id>
+                <goals>
+                  <goal>jar-no-fork</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-javadoc-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>attach-javadocs</id>
+                <goals>
+                  <goal>jar</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-gpg-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>sign-artifacts</id>
+                <phase>verify</phase>
+                <goals>
+                  <goal>sign</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.sonatype.central</groupId>
+            <artifactId>central-publishing-maven-plugin</artifactId>
+            <extensions>true</extensions>
+            <configuration>
+              <publishingServerId>${hashseal.central.serverId}</publishingServerId>
+              <autoPublish>${hashseal.central.autoPublish}</autoPublish>
+              <waitUntil>validated</waitUntil>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+      <properties>
+        <!-- Override with -Dhashseal.central.autoPublish=true for CI auto-release -->
+        <hashseal.central.autoPublish>false</hashseal.central.autoPublish>
+      </properties>
+    </profile>
+  </profiles>
+</project>
