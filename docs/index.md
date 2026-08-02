@@ -31,7 +31,8 @@ description: Seal and verify AI instruction files and build trees — what was s
       <span class="lead-label">Sealed, Verifiable, Agent Instruction Files</span>
       <h3><a href="{{ '/instruct/' | relative_url }}">Agent instruction file integrity sealing</a></h3>
       <p>
-        Seal <code>AGENTS.md</code>, skills, and other AI instruction files with a [BLAKE3 digest](https://en.wikipedia.org/wiki/BLAKE_(hash_function)#BLAKE3 "Wikipedia link")
+        Seal <code>AGENTS.md</code>, skills, and other AI instruction files with a
+        <a href="https://en.wikipedia.org/wiki/BLAKE_(hash_function)#BLAKE3" title="BLAKE3 on Wikipedia" rel="noopener noreferrer" target="_blank">BLAKE3 digest</a>
         with optional GPG via git’s signing credentials. The idea is simple; Check instruction file integrity before sending them to models or agents to run.  Sign your instructions so that your users can verify and trust that they are exactly what you intended to deliver.
       </p>
     </article>
