@@ -2,6 +2,7 @@
 layout: default
 title: Verify SDKs
 permalink: /instruct/verify-sdks/
+hashseal: "blake3:10af0fa0d8fe724a9d0d8368029ac9207e48270a9d7101bff0e7a07b351f9533"
 ---
 
 # Verify SDKs (zero-dep)

@@ -2,19 +2,19 @@
 layout: default
 title: Agent instruction file integrity seal
 permalink: /instruct/
-hashseal: "blake3:e50f9554c78a64559f6af91aa5fad667e72fe19defc14cb1ae748adbc9843e4a"
+hashseal: "blake3:2b8429e5784cfe6f5245a133006447158885f1364cfc90f272225931db845f08"
 ---
 
 # Agent instruction file integrity seal
 
-**Product lead for HashSeal.** Seal agent instruction files and verify them so developers and hosts only pass **approved** content to models.
+Seal agent instruction files and verify them so developers and hosts only pass **approved** content to models.
 
 ## What it is
 
 An **integrity seal** for instruction files (Markdown and configured instruct formats — `AGENTS.md`, skills, policy docs you keep next to code): a **BLAKE3 content digest** in YAML front matter. You verify that seal before agents or CI use the file. Optional GPG signature attests who sealed it (same settings as `git commit -S`).
 
 This answers: *Is this still the instruction text I sealed?*  
-It does **not** claim legal authorship, replace code review, or guarantee how a model will behave — only that the **file contents** match the seal.
+It does **not** claim legal authorship, replace code review, or guarantee how a model will behave — only that the **file contents** match the seal.  It proves that instructions have not been altered or changed since it was shipped.
 
 ## Why use it
 
@@ -22,6 +22,7 @@ It does **not** claim legal authorship, replace code review, or guarantee how a 
 - **Gate model input** — fail the pipeline or refuse the agent run when seals break.
 - **Same check everywhere** — CLI, tiny binary, browser extension, and zero-dep SDKs share official vectors.
 - **Clear failures** — every non-OK path is listed (no silent exit-only fails).
+- **End User Support** - Verify that what the user is running still matches what you shipped and that the user hasn't customized anything when troubleshooting anomalies in agent execution. 
 
 ## How it works
 
@@ -33,6 +34,15 @@ It does **not** claim legal authorship, replace code review, or guarantee how a 
 ```text
 hashseal seal --instruct [--sign]
 hashseal check [--require-signature]
+```
+## What does it do to my instruction files?
+
+It adds a single line to the YAML Front Matter of your instruction files:
+
+For example:
+
+```text
+hashseal: "blake3:52fdb937b7c8e46f94723ea84eab22a4aff20830d2a9c9f62452536591c1d6cc"
 ```
 
 ## How to use it in your projects
