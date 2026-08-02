@@ -222,6 +222,20 @@ cargo fmt
 cargo clippy --workspace -- -D warnings
 ```
 
+### Git hooks (optional, recommended)
+
+CI runs `cargo fmt --all -- --check`. Install the repo pre-commit hook so that fails locally before push when staged `.rs` files are present:
+
+```bash
+# Linux / macOS / Git Bash
+./scripts/install-git-hooks.sh
+
+# Windows (PowerShell)
+pwsh scripts/install-git-hooks.ps1
+```
+
+That sets `core.hooksPath=scripts/git-hooks` for this clone only. Fix failures with `cargo fmt --all`, then re-stage and commit.
+
 ```bash
 # Multi-lang instruct vectors + tree where implemented
 node verify/js/test/vectors.test.js

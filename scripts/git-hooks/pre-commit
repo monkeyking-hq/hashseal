@@ -1,0 +1,31 @@
+#!/usr/bin/env sh
+# Pre-commit: rustfmt check (matches CI: cargo fmt --all -- --check).
+# Copyright (c) 2026 MonkeyKing.dev
+#
+# Install once per clone:
+#   scripts/install-git-hooks.sh
+#   # or: pwsh scripts/install-git-hooks.ps1
+set -eu
+
+# Repo root: hooks live in scripts/git-hooks/
+ROOT="$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)"
+cd "$ROOT"
+
+# Skip when no Rust sources are staged (docs-only / fixture commits).
+if ! git diff --cached --name-only --diff-filter=ACM | grep -qE '\.rs$'; then
+  exit 0
+fi
+
+if ! command -v cargo >/dev/null 2>&1; then
+  echo "pre-commit: cargo not on PATH; cannot run rustfmt (required when committing .rs files)." >&2
+  exit 1
+fi
+
+echo "pre-commit: cargo fmt --all -- --check"
+if ! cargo fmt --all -- --check; then
+  echo "" >&2
+  echo "pre-commit: rustfmt check failed (same as CI)." >&2
+  echo "  Fix:  cargo fmt --all" >&2
+  echo "  Then: git add -u && git commit" >&2
+  exit 1
+fi

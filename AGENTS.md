@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:9d63e305b52cbeb79260b467fcfe87666a0a4b40413bcb2202083fd99c5a3e1e"
+hashseal: "blake3:c6e1f1abba09a75692fe38af3b91ffb182ce93a86a76239aaec2b7055a0194ed"
 ---
 # AGENTS.md — HashSeal workspace
 
@@ -61,3 +61,14 @@ cargo tree -p hashseal-check
 cargo fmt
 cargo clippy --workspace -- -D warnings
 ```
+
+### Git hooks
+
+CI runs `cargo fmt --all -- --check`. After clone (once per machine):
+
+```bash
+./scripts/install-git-hooks.sh          # Unix / Git Bash
+# or: pwsh scripts/install-git-hooks.ps1
+```
+
+Pre-commit runs rustfmt when staged `.rs` files exist. Hook lives at `scripts/git-hooks/pre-commit` (via `core.hooksPath`).
