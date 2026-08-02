@@ -1,14 +1,14 @@
 # GitHub Pages — docs/ as site root
-# Custom domain: set url to https://hashseal.ai and baseurl to "" when DNS is live.
+# Until hashseal.ai DNS is verified, site is at /hashseal on github.io.
+# After custom domain is live: url: https://hashseal.ai  and  baseurl: ""
 
 title: HashSeal
 description: >-
   Seal and verify AI instruction files and build trees —
   what was sealed is what you still have.
-url: https://hashseal.ai
-baseurl: ""
-# github_url: set when the public repo URL is known
-# github_url: https://github.com/ORG/hashseal
+url: https://monkeyking-hq.github.io
+baseurl: /hashseal
+github_url: https://github.com/monkeyking-hq/hashseal
 
 markdown: kramdown
 kramdown:
