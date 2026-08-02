@@ -82,7 +82,9 @@ pub fn sign_digest(digest_qualified: &str, cfg: &GpgConfig) -> Result<String> {
     if let Some(key) = &cfg.signing_key {
         cmd.args(["--local-user", key]);
     }
-    cmd.stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped());
+    cmd.stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
 
     let mut child = cmd.spawn().map_err(|e| {
         Error::InvalidFormat(format!(

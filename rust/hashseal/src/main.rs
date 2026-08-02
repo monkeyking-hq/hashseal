@@ -273,7 +273,13 @@ fn collect_md_files(
     if !paths.is_empty() {
         return Ok(paths
             .iter()
-            .map(|p| if p.is_absolute() { p.clone() } else { root.join(p) })
+            .map(|p| {
+                if p.is_absolute() {
+                    p.clone()
+                } else {
+                    root.join(p)
+                }
+            })
             .collect());
     }
     // reuse tree collector with md-focused include
@@ -324,9 +330,14 @@ fn run_seal_instruct(
         OutputFormat::Json => {
             println!(
                 "{}",
-                serde_json::to_string_pretty(&digests.iter().map(|(p, d)| {
-                    serde_json::json!({"path": p, "digest": d, "signed": sign})
-                }).collect::<Vec<_>>())?
+                serde_json::to_string_pretty(
+                    &digests
+                        .iter()
+                        .map(|(p, d)| {
+                            serde_json::json!({"path": p, "digest": d, "signed": sign})
+                        })
+                        .collect::<Vec<_>>()
+                )?
             );
         }
     }
@@ -610,11 +621,22 @@ fn print_finding_human(f: &CheckResult) {
 fn run_unseal(root: &Path, paths: &[PathBuf]) -> Result<ExitCode, Box<dyn std::error::Error>> {
     let opts = InstructOptions::default();
     let files = if paths.is_empty() {
-        collect_md_files(root, &[], &["**/*.md".into()], &TreeSealOptions::default().exclude)?
+        collect_md_files(
+            root,
+            &[],
+            &["**/*.md".into()],
+            &TreeSealOptions::default().exclude,
+        )?
     } else {
         paths
             .iter()
-            .map(|p| if p.is_absolute() { p.clone() } else { root.join(p) })
+            .map(|p| {
+                if p.is_absolute() {
+                    p.clone()
+                } else {
+                    root.join(p)
+                }
+            })
             .collect()
     };
     for path in files {

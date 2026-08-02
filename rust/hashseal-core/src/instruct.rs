@@ -183,9 +183,7 @@ fn for_each_fm_entry(lines: &[String], mut f: impl FnMut(&str, &str)) {
             if rest == "|" || rest == ">" || rest == "|-" || rest == ">-" {
                 let mut val = String::new();
                 i += 1;
-                while i < lines.len()
-                    && (lines[i].starts_with(' ') || lines[i].starts_with('\t'))
-                {
+                while i < lines.len() && (lines[i].starts_with(' ') || lines[i].starts_with('\t')) {
                     if !val.is_empty() {
                         val.push('\n');
                     }
@@ -250,7 +248,10 @@ fn extract_reserved_field(lines: &[String], field: &str) -> Option<String> {
     None
 }
 
-fn extract_seal(lines: &[String], seal_field: &str) -> Option<std::result::Result<Digest, crate::Error>> {
+fn extract_seal(
+    lines: &[String],
+    seal_field: &str,
+) -> Option<std::result::Result<Digest, crate::Error>> {
     extract_reserved_field(lines, seal_field).map(|raw| raw.parse())
 }
 
@@ -356,11 +357,14 @@ fn render_with_seal(
 
 /// Seal instruct markdown bytes; returns new file contents and digest.
 pub fn seal_instruct_bytes(text: &str, opts: &InstructOptions) -> Result<(String, Digest)> {
-    seal_instruct_bytes_with(text, &SealOpts {
-        instruct: opts.clone(),
-        sign: false,
-        gpg: GpgConfig::default(),
-    })
+    seal_instruct_bytes_with(
+        text,
+        &SealOpts {
+            instruct: opts.clone(),
+            sign: false,
+            gpg: GpgConfig::default(),
+        },
+    )
 }
 
 /// Seal with optional GPG signature (git-aligned).
@@ -546,8 +550,8 @@ mod tests {
     #[test]
     fn official_vectors_instruct_v1() {
         let path = crate::test_paths::monorepo_path("verify/vectors/instruct-v1.json");
-        let raw = fs::read_to_string(&path)
-            .unwrap_or_else(|e| panic!("load {}: {e}", path.display()));
+        let raw =
+            fs::read_to_string(&path).unwrap_or_else(|e| panic!("load {}: {e}", path.display()));
         let doc: serde_json::Value =
             serde_json::from_str(&raw).expect("instruct-v1.json must be valid JSON");
         assert_eq!(doc["spec"], "instruct-v1");

@@ -103,7 +103,11 @@ impl CheckResult {
         }
     }
 
-    pub fn bad_signature(path: Option<PathBuf>, digest: &Digest, message: impl Into<String>) -> Self {
+    pub fn bad_signature(
+        path: Option<PathBuf>,
+        digest: &Digest,
+        message: impl Into<String>,
+    ) -> Self {
         Self {
             ok: false,
             status: CheckStatus::BadSignature,
@@ -115,7 +119,11 @@ impl CheckResult {
         }
     }
 
-    pub fn untrusted_key(path: Option<PathBuf>, digest: &Digest, message: impl Into<String>) -> Self {
+    pub fn untrusted_key(
+        path: Option<PathBuf>,
+        digest: &Digest,
+        message: impl Into<String>,
+    ) -> Self {
         Self {
             ok: false,
             status: CheckStatus::UntrustedKey,

@@ -276,6 +276,10 @@ pub fn write_report(path: &Path, report: &AuditReport, pretty: bool) -> crate::e
 }
 
 #[cfg(not(feature = "json"))]
-pub fn write_report(_path: &Path, _report: &AuditReport, _pretty: bool) -> crate::error::Result<()> {
+pub fn write_report(
+    _path: &Path,
+    _report: &AuditReport,
+    _pretty: bool,
+) -> crate::error::Result<()> {
     Ok(())
 }

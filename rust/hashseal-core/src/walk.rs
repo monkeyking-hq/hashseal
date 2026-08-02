@@ -7,12 +7,22 @@ use std::path::{Path, PathBuf};
 pub fn is_skipped_dir_name(name: &str) -> bool {
     matches!(
         name,
-        ".git" | "target" | "node_modules" | "dist" | "build" | "vendor" | ".hashseal" | "hashseal-bundle"
+        ".git"
+            | "target"
+            | "node_modules"
+            | "dist"
+            | "build"
+            | "vendor"
+            | ".hashseal"
+            | "hashseal-bundle"
     )
 }
 
 /// Collect files under root. `match_file(rel_posix) -> bool`.
-pub fn walk_files(root: &Path, mut match_file: impl FnMut(&str) -> bool) -> std::io::Result<Vec<PathBuf>> {
+pub fn walk_files(
+    root: &Path,
+    mut match_file: impl FnMut(&str) -> bool,
+) -> std::io::Result<Vec<PathBuf>> {
     let mut out = Vec::new();
     walk_rec(root, root, &mut match_file, &mut out)?;
     out.sort();

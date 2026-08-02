@@ -91,9 +91,30 @@ impl Default for TreeSealOptions {
 fn is_text_ext(path: &Path) -> bool {
     matches!(
         path.extension().and_then(|e| e.to_str()).unwrap_or(""),
-        "md" | "txt" | "toml" | "yml" | "yaml" | "json" | "rs" | "java" | "go" | "py" | "js"
-            | "ts" | "tsx" | "jsx" | "css" | "html" | "xml" | "sh" | "ps1" | "c" | "h" | "cpp"
-            | "cs" | "rb" | "svg"
+        "md" | "txt"
+            | "toml"
+            | "yml"
+            | "yaml"
+            | "json"
+            | "rs"
+            | "java"
+            | "go"
+            | "py"
+            | "js"
+            | "ts"
+            | "tsx"
+            | "jsx"
+            | "css"
+            | "html"
+            | "xml"
+            | "sh"
+            | "ps1"
+            | "c"
+            | "h"
+            | "cpp"
+            | "cs"
+            | "rb"
+            | "svg"
     )
 }
 
@@ -125,7 +146,13 @@ fn path_excluded(rel: &str, exclude: &[String]) -> bool {
     rel.split('/').any(|c| {
         matches!(
             c,
-            ".git" | "target" | "node_modules" | "dist" | "build" | "vendor" | ".hashseal"
+            ".git"
+                | "target"
+                | "node_modules"
+                | "dist"
+                | "build"
+                | "vendor"
+                | ".hashseal"
                 | "hashseal-bundle"
         )
     })
@@ -187,7 +214,11 @@ pub fn read_ledger(path: &Path) -> Result<Ledger> {
     serde_json::from_str(&text).map_err(|e| Error::InvalidFormat(format!("ledger parse: {e}")))
 }
 
-pub fn verify_tree(root: &Path, ledger: &Ledger, opts: &TreeSealOptions) -> Result<TreeVerifyResult> {
+pub fn verify_tree(
+    root: &Path,
+    ledger: &Ledger,
+    opts: &TreeSealOptions,
+) -> Result<TreeVerifyResult> {
     let algorithm = ledger.algorithm.parse().unwrap_or(opts.algorithm);
     let mut opts = opts.clone();
     opts.algorithm = algorithm;
@@ -323,10 +354,7 @@ mod tests {
         } else {
             content.as_bytes().to_vec()
         };
-        (
-            Digest::compute(Algorithm::Blake3, &data).qualified(),
-            size,
-        )
+        (Digest::compute(Algorithm::Blake3, &data).qualified(), size)
     }
 
     fn write_files_map(root: &Path, files: &serde_json::Map<String, serde_json::Value>) {
