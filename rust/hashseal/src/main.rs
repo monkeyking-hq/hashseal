@@ -464,9 +464,7 @@ fn run_verify(
         line_endings_lf_text: cfg.tree.line_endings == "lf-text",
     };
     let result = verify_tree(root, &led, &opts)?;
-    let exit = if result.ok {
-        0
-    } else if no_fail || cfg.enforce.on_tree_mismatch == "warn" {
+    let exit = if result.ok || no_fail || cfg.enforce.on_tree_mismatch == "warn" {
         0
     } else {
         1
@@ -547,9 +545,7 @@ fn run_check(
         results.push(check_instruct_path_with(path, &opts));
     }
     let batch = BatchCheckResult::from_results(results.clone());
-    let exit = if batch.ok {
-        0
-    } else if no_fail || cfg.enforce.on_doc_mismatch == "warn" {
+    let exit = if batch.ok || no_fail || cfg.enforce.on_doc_mismatch == "warn" {
         0
     } else {
         1

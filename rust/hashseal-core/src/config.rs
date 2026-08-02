@@ -49,7 +49,7 @@ pub struct EnforceConfig {
     pub on_missing_ledger: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct SigningConfig {
     pub enable: bool,
     pub require: bool,
@@ -201,17 +201,6 @@ impl Default for EnforceConfig {
             on_tree_mismatch: "fail".into(),
             on_doc_mismatch: "fail".into(),
             on_missing_ledger: "fail".into(),
-        }
-    }
-}
-
-impl Default for SigningConfig {
-    fn default() -> Self {
-        Self {
-            enable: false,
-            require: false,
-            signing_key: None,
-            gpg_program: None,
         }
     }
 }
