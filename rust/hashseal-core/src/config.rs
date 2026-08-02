@@ -66,6 +66,85 @@ pub struct ReportConfig {
     pub pretty: bool,
 }
 
+/// Default instruct-file globs: ambient agent context files plus common
+/// agent/CLI/IDE skill and command directories (Markdown / Cursor `.mdc`).
+///
+/// Not every `*.md` in a repo — only paths that typically condition agent
+/// behavior. Override via `.hashseal.json` `document.include` / `document.exclude`.
+///
+/// Survey basis (2026): cross-agent context filenames (`AGENTS.md`, `CLAUDE.md`,
+/// Copilot instructions, Cursor/Windsurf/Cline rules) and agent integration
+/// skill/command directories aligned with common CLI/IDE layouts (including
+/// those catalogued by Spec Kit's supported coding-agent integrations).
+pub const DEFAULT_DOCUMENT_INCLUDES: &[&str] = &[
+    // --- Ambient / cross-agent context files ---
+    "**/AGENTS.md",
+    "**/AGENTS.local.md",
+    "**/AGENT.md",
+    "**/CLAUDE.md",
+    "**/GEMINI.md",
+    "**/QWEN.md",
+    "**/CODEX.md",
+    "**/GROK.md",
+    "**/CONVENTIONS.md",
+    "**/.cursorrules",
+    "**/.windsurfrules",
+    "**/.clinerules",
+    "**/.github/copilot-instructions.md",
+    "**/copilot-instructions.md",
+    // --- Skill entrypoints anywhere in the tree ---
+    "**/SKILL.md",
+    // --- Cursor / Windsurf / Continue / Cline rule trees ---
+    "**/.cursor/rules/**/*.md",
+    "**/.cursor/rules/**/*.mdc",
+    "**/.cursor/skills/**/*.md",
+    "**/.cursor/commands/**/*.md",
+    "**/.windsurf/**/*.md",
+    "**/.continue/rules/**/*.md",
+    "**/.clinerules/**/*.md",
+    // --- Agent skill / command directories (CLI + IDE) ---
+    "**/.agents/**/*.md",
+    "**/.claude/**/*.md",
+    "**/.github/agents/**/*.md",
+    "**/.github/prompts/**/*.md",
+    "**/.github/skills/**/*.md",
+    "**/.github/instructions/**/*.md",
+    "**/.gemini/**/*.md",
+    "**/.grok/**/*.md",
+    "**/.augment/**/*.md",
+    "**/.alquimia/**/*.md",
+    "**/.codebuddy/**/*.md",
+    "**/.factory/**/*.md",
+    "**/.firebender/**/*.md",
+    "**/.devin/**/*.md",
+    "**/.junie/**/*.md",
+    "**/.kilo/**/*.md",
+    "**/.kilocode/**/*.md",
+    "**/.kiro/**/*.md",
+    "**/.lingma/**/*.md",
+    "**/.omp/**/*.md",
+    "**/.pi/**/*.md",
+    "**/.qoder/**/*.md",
+    "**/.qwen/**/*.md",
+    "**/.shai/**/*.md",
+    "**/.tabnine/**/*.md",
+    "**/.trae/**/*.md",
+    "**/.zcode/**/*.md",
+    "**/.bob/**/*.md",
+    "**/.kimi/**/*.md",
+    "**/.kimi-code/**/*.md",
+    "**/.rovodev/**/*.md",
+    // Project skill packs (e.g. skills/<tool>/SKILL.md) covered by **/SKILL.md
+];
+
+/// Owned copy of [`DEFAULT_DOCUMENT_INCLUDES`] for config structs.
+pub fn default_document_includes() -> Vec<String> {
+    DEFAULT_DOCUMENT_INCLUDES
+        .iter()
+        .map(|s| (*s).to_string())
+        .collect()
+}
+
 impl Default for TreeConfig {
     fn default() -> Self {
         Self {
@@ -92,7 +171,7 @@ impl Default for DocumentConfig {
     fn default() -> Self {
         Self {
             enable: true,
-            include: vec!["**/*.md".into()],
+            include: default_document_includes(),
             exclude: TreeConfig::default().exclude,
             canonical: "full".into(),
             field: "hashseal".into(),
@@ -214,6 +293,21 @@ impl HashSealConfig {
                     .filter_map(|x| x.as_str().map(str::to_string))
                     .collect();
             }
+            if let Some(a) = o.get("exclude").and_then(|x| x.as_array()) {
+                self.document.exclude = a
+                    .iter()
+                    .filter_map(|x| x.as_str().map(str::to_string))
+                    .collect();
+            }
+            if let Some(s) = o.get("field").and_then(|x| x.as_str()) {
+                self.document.field = s.into();
+            }
+            if let Some(b) = o.get("auto_frontmatter").and_then(|x| x.as_bool()) {
+                self.document.auto_frontmatter = b;
+            }
+            if let Some(s) = o.get("algorithm").and_then(|x| x.as_str()) {
+                self.document.algorithm = s.into();
+            }
         }
         if let Some(o) = v.get("tree") {
             if let Some(s) = o.get("ledger").and_then(|x| x.as_str()) {
@@ -221,6 +315,12 @@ impl HashSealConfig {
             }
             if let Some(s) = o.get("algorithm").and_then(|x| x.as_str()) {
                 self.tree.algorithm = s.into();
+            }
+            if let Some(a) = o.get("include").and_then(|x| x.as_array()) {
+                self.tree.include = a
+                    .iter()
+                    .filter_map(|x| x.as_str().map(str::to_string))
+                    .collect();
             }
             if let Some(a) = o.get("exclude").and_then(|x| x.as_array()) {
                 self.tree.exclude = a
@@ -271,5 +371,58 @@ impl HashSealConfig {
         } else {
             root.join("hashseal-bundle").join("report.json")
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::walk::glob_match;
+
+    #[test]
+    fn default_includes_cover_common_agent_paths() {
+        let samples = [
+            "AGENTS.md",
+            "pkg/CLAUDE.md",
+            ".github/copilot-instructions.md",
+            ".cursor/rules/rust.mdc",
+            ".claude/skills/foo/SKILL.md",
+            ".agents/skills/bar/SKILL.md",
+            ".grok/skills/x/SKILL.md",
+            "skills/cursor/SKILL.md",
+            ".github/agents/speckit.agent.md",
+        ];
+        for path in samples {
+            assert!(
+                DEFAULT_DOCUMENT_INCLUDES
+                    .iter()
+                    .any(|p| glob_match(p, path)),
+                "default includes should match {path}"
+            );
+        }
+    }
+
+    #[test]
+    fn default_includes_skip_generic_readme() {
+        assert!(
+            !DEFAULT_DOCUMENT_INCLUDES
+                .iter()
+                .any(|p| glob_match(p, "README.md")),
+            "README.md must not match default instruct includes"
+        );
+        assert!(
+            !DEFAULT_DOCUMENT_INCLUDES
+                .iter()
+                .any(|p| glob_match(p, "docs/cli.md")),
+            "generic docs should not match default instruct includes"
+        );
+    }
+
+    #[test]
+    fn document_default_uses_curated_includes() {
+        let d = DocumentConfig::default();
+        assert!(!d.include.is_empty());
+        assert!(d.include.iter().any(|p| p == "**/AGENTS.md"));
+        assert!(!d.include.iter().any(|p| p == "**/*.md"));
     }
 }

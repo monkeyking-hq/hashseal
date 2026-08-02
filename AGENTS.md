@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:c6e1f1abba09a75692fe38af3b91ffb182ce93a86a76239aaec2b7055a0194ed"
+hashseal: "blake3:ccb06a0a6ae2f9af20b20f2ec9bf26b954f08863b963aec970a402ddd43e4ef1"
 ---
 # AGENTS.md — HashSeal workspace
 
@@ -72,3 +72,7 @@ CI runs `cargo fmt --all -- --check`. After clone (once per machine):
 ```
 
 Pre-commit runs rustfmt when staged `.rs` files exist. Hook lives at `scripts/git-hooks/pre-commit` (via `core.hooksPath`).
+
+### Instruct defaults
+
+`document.include` defaults to agent instruction surfaces (`AGENTS.md`, `CLAUDE.md`, Copilot/Cursor/skill dirs, …), not `**/*.md`. See `DEFAULT_DOCUMENT_INCLUDES` in `rust/hashseal-core/src/config.rs` and `docs/cli.md`. Override with `.hashseal.json` include/exclude.

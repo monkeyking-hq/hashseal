@@ -18,7 +18,7 @@ pub mod walk;
 pub use bundle::{
     digest_artifacts, write_bundle, ArtifactDigest, BundleManifest, BundlePaths, BUNDLE_DIR_NAME,
 };
-pub use config::HashSealConfig;
+pub use config::{default_document_includes, HashSealConfig, DEFAULT_DOCUMENT_INCLUDES};
 pub use digest::{Algorithm, Digest};
 pub use error::Error;
 pub use gpg::{signing_payload, GpgConfig, GpgVerifyStatus};

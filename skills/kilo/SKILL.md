@@ -3,7 +3,7 @@ name: hashseal-respect-seals
 description: >-
   HashSeal skill for Kilo: sealed instruct files are law; re-seal after edits;
   never strip seals; enumerate every check failure with digests.
-hashseal: "blake3:a3aa11e9017c28d1c5b8f1d853c6688f39b8ee6fb80f71b2eb3f99ba63d7f35e"
+hashseal: "blake3:cf86671ececdf527efab50f91bb32c3fefaa078a53f985972fd0ac7bc3c70387"
 ---
 
 # HashSeal — respect sealed instructions (Kilo)

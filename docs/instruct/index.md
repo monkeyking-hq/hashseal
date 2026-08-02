@@ -2,6 +2,7 @@
 layout: default
 title: Agent instruction file integrity seal
 permalink: /instruct/
+hashseal: "blake3:e50f9554c78a64559f6af91aa5fad667e72fe19defc14cb1ae748adbc9843e4a"
 ---
 
 # Agent instruction file integrity seal
@@ -53,6 +54,8 @@ See [Install](../install.md).
 hashseal seal --instruct --root .
 hashseal seal --instruct --sign --root .   # GPG via git config
 ```
+
+By default this seals **agent instruction files only** (for example `AGENTS.md`, `CLAUDE.md`, Copilot/Cursor rules, and common agent skill/command directories) — not every `README.md` or docs page. Override with `document.include` / `document.exclude` in `.hashseal.json` (see [CLI config](../cli.md#default-instruct-includes)).
 
 ### 3. Check before agents / models
 

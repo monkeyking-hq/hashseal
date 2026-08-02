@@ -64,30 +64,76 @@ fn walk_rec(
     Ok(())
 }
 
-/// Very small glob: supports `**`, `*`, and suffix patterns like `**/*.md`.
+/// Whether `path` is under directory `dir` (as a path segment prefix).
+///
+/// Examples: dir=`".claude"` matches `.claude/skills/x.md` and `pkg/.claude/CLAUDE.md`.
+fn under_dir(path: &str, dir: &str) -> bool {
+    path == dir || path.starts_with(&format!("{dir}/")) || path.contains(&format!("/{dir}/"))
+}
+
+/// Very small glob: supports `**`, `*`, directory trees, and suffix patterns like `**/*.md`.
+///
+/// Supported forms (common for instruct includes):
+/// - `**/*` / `*`
+/// - exact path or basename (`AGENTS.md`, `.github/copilot-instructions.md`)
+/// - `**/name` exact file at any depth
+/// - `**/*.ext` / `*.ext`
+/// - `**/dir/**` any file under `dir`
+/// - `**/dir/**/*` same
+/// - `**/dir/**/*.ext` files with extension under `dir`
 pub fn glob_match(pattern: &str, path: &str) -> bool {
     let pattern = pattern.trim_start_matches("./");
     let path = path.trim_start_matches("./");
     if pattern == "**/*" || pattern == "*" {
         return true;
     }
+
+    // Exact (no wildcards)
+    if !pattern.contains('*') && !pattern.contains('?') {
+        return path == pattern || path.ends_with(&format!("/{pattern}"));
+    }
+
     if let Some(suf) = pattern.strip_prefix("**/") {
-        if !suf.contains('*') && !suf.contains('?') {
-            return path == suf || path.ends_with(&format!("/{suf}")) || path.ends_with(suf);
+        // **/dir/**/*.ext
+        if let Some((dir, ext)) = suf.split_once("/**/*.") {
+            if !dir.is_empty()
+                && !dir.contains('*')
+                && !dir.contains('?')
+                && !ext.contains('*')
+                && !ext.contains('?')
+            {
+                return under_dir(path, dir) && path.ends_with(&format!(".{ext}"));
+            }
         }
+        // **/dir/** or **/dir/**/*
+        if let Some(dir) = suf
+            .strip_suffix("/**/*")
+            .or_else(|| suf.strip_suffix("/**"))
+        {
+            if !dir.is_empty() && !dir.contains('*') && !dir.contains('?') {
+                return under_dir(path, dir);
+            }
+        }
+        // **/*.ext
         if let Some(ext) = suf.strip_prefix("*.") {
+            if !ext.contains('*') && !ext.contains('?') {
+                return path.ends_with(&format!(".{ext}"));
+            }
+        }
+        // **/exact-file (no wildcards in suffix)
+        if !suf.contains('*') && !suf.contains('?') {
+            return path == suf || path.ends_with(&format!("/{suf}"));
+        }
+    }
+
+    if let Some(ext) = pattern.strip_prefix("*.") {
+        if !ext.contains('*') && !ext.contains('?') {
             return path.ends_with(&format!(".{ext}"));
         }
     }
-    if let Some(ext) = pattern.strip_prefix("*.") {
-        return path.ends_with(&format!(".{ext}"));
-    }
-    // exact
-    if !pattern.contains('*') {
-        return path == pattern || path.ends_with(&format!("/{pattern}"));
-    }
-    // naive **/*.ext already handled; fallback: ends with pattern without stars
-    let stripped = pattern.replace("**/", "").replace("*", "");
+
+    // naive fallback: strip ** / * and require remaining fragment
+    let stripped = pattern.replace("**/", "").replace('*', "");
     if !stripped.is_empty() {
         return path.contains(&stripped) || path.ends_with(&stripped);
     }
@@ -95,6 +141,11 @@ pub fn glob_match(pattern: &str, path: &str) -> bool {
 }
 
 pub fn any_glob(patterns: &[String], path: &str) -> bool {
+    patterns.iter().any(|p| glob_match(p, path))
+}
+
+/// True if `path` matches any of the string patterns (borrowed).
+pub fn any_glob_str(patterns: &[&str], path: &str) -> bool {
     patterns.iter().any(|p| glob_match(p, path))
 }
 
@@ -107,5 +158,38 @@ mod tests {
         assert!(glob_match("**/*.md", "docs/AGENTS.md"));
         assert!(glob_match("**/*.md", "AGENTS.md"));
         assert!(!glob_match("**/*.md", "a.rs"));
+    }
+
+    #[test]
+    fn glob_exact_nested() {
+        assert!(glob_match("**/AGENTS.md", "AGENTS.md"));
+        assert!(glob_match("**/AGENTS.md", "pkg/AGENTS.md"));
+        assert!(!glob_match("**/AGENTS.md", "AGENTS.local.md"));
+        assert!(glob_match(
+            "**/.github/copilot-instructions.md",
+            ".github/copilot-instructions.md"
+        ));
+    }
+
+    #[test]
+    fn glob_dir_tree() {
+        assert!(glob_match("**/.claude/**", ".claude/skills/foo/SKILL.md"));
+        assert!(glob_match(
+            "**/.claude/**/*.md",
+            ".claude/skills/foo/SKILL.md"
+        ));
+        assert!(!glob_match("**/.claude/**/*.md", ".claude/settings.json"));
+        assert!(glob_match(
+            "**/.cursor/rules/**/*.mdc",
+            ".cursor/rules/rust.mdc"
+        ));
+        assert!(glob_match("**/.agents/**", "pkg/.agents/skills/x/SKILL.md"));
+        assert!(!glob_match("**/.claude/**", "not-claude/x.md"));
+    }
+
+    #[test]
+    fn glob_mdc_ext() {
+        assert!(glob_match("**/*.mdc", ".cursor/rules/a.mdc"));
+        assert!(!glob_match("**/*.mdc", "a.md"));
     }
 }

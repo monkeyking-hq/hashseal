@@ -282,10 +282,10 @@ fn collect_md_files(
             })
             .collect());
     }
-    // reuse tree collector with md-focused include
+    // reuse tree collector with default instruct includes when empty
     let opts = TreeSealOptions {
         include: if include.is_empty() {
-            vec!["**/*.md".into()]
+            hashseal_core::default_document_includes()
         } else {
             include.to_vec()
         },
@@ -624,7 +624,7 @@ fn run_unseal(root: &Path, paths: &[PathBuf]) -> Result<ExitCode, Box<dyn std::e
         collect_md_files(
             root,
             &[],
-            &["**/*.md".into()],
+            &hashseal_core::default_document_includes(),
             &TreeSealOptions::default().exclude,
         )?
     } else {

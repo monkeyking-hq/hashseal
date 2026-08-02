@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:3b82573f7419751a4d4061df8f8640361c6c4d82428e7a108ee22b883d96b1e5"
+hashseal: "blake3:981b60bcc3f6272a04fd431c7b2209ae7ab64a0ee2239839a5cf025b26a19b89"
 ---
 # HashSeal CLI reference
 
@@ -32,12 +32,29 @@ Relevant keys:
 | Path | Meaning |
 |------|---------|
 | `document.enable` | Seal/check instruct files |
-| `document.include` | Globs (default `**/*.md`) |
+| `document.include` | Globs for instruct files (see [default instruct includes](#default-instruct-includes)) |
+| `document.exclude` | Globs to skip (defaults match tree excludes: `target`, `node_modules`, …) |
 | `document.canonical` | `full` (default) or `body-only` |
 | `document.field` | Seal field name (default `hashseal`) |
 | `tree.include` / `tree.exclude` | Tree seal walk |
 | `signing.enable` / `signing.require` | GPG on seal / require on check |
 | `report.write` | Write report JSON next to ledger |
+
+### Default instruct includes
+
+Defaults target **agent instruction surfaces**, not every Markdown file. README and general docs are **not** included unless you add them.
+
+| Category | Examples |
+|----------|----------|
+| Ambient context | `AGENTS.md`, `AGENTS.local.md`, `AGENT.md`, `CLAUDE.md`, `GEMINI.md`, `QWEN.md`, `CODEX.md`, `GROK.md`, `CONVENTIONS.md` |
+| Copilot | `.github/copilot-instructions.md`, `.github/instructions/**/*.md`, `.github/agents/**/*.md`, `.github/prompts/**/*.md`, `.github/skills/**/*.md` |
+| Cursor / Windsurf / Cline / Continue | `.cursorrules`, `.cursor/rules/**/*.{md,mdc}`, `.cursor/skills/**/*.md`, `.windsurfrules`, `.windsurf/**/*.md`, `.clinerules`, `.clinerules/**/*.md`, `.continue/rules/**/*.md` |
+| Skills entrypoint | `**/SKILL.md` (project packs and agent skill dirs) |
+| Agent CLI/IDE skill & command dirs | `.agents/`, `.claude/`, `.gemini/`, `.grok/`, `.kilo/`, `.augment/`, and other common tool roots (Markdown under those trees) |
+
+Full default list: `DEFAULT_DOCUMENT_INCLUDES` in `hashseal-core` (`rust/hashseal-core/src/config.rs`) and the example overlay [`config/examples/hashseal.mvp.json`](../config/examples/hashseal.mvp.json).
+
+**Customize:** set `document.include` and/or `document.exclude` in `.hashseal.json` — replace includes entirely, or narrow/expand relative to your workflow. To seal *all* Markdown again: `"include": ["**/*.md"]`.
 
 ## Commands
 

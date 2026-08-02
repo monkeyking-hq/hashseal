@@ -4,8 +4,8 @@
 use hashseal_core::gpg::GpgConfig;
 use hashseal_core::instruct::{check_instruct_path_with, CheckOpts, InstructOptions};
 use hashseal_core::result::BatchCheckResult;
-use hashseal_core::walk::walk_files;
-use hashseal_core::{CheckStatus, VERSION};
+use hashseal_core::walk::{any_glob_str, walk_files};
+use hashseal_core::{CheckStatus, DEFAULT_DOCUMENT_INCLUDES, VERSION};
 use std::env;
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -50,7 +50,7 @@ fn main() -> ExitCode {
     };
 
     let files = if paths.is_empty() {
-        walk_files(&root, |rel| rel.ends_with(".md")).unwrap_or_default()
+        walk_files(&root, |rel| any_glob_str(DEFAULT_DOCUMENT_INCLUDES, rel)).unwrap_or_default()
     } else {
         paths
             .into_iter()
@@ -109,10 +109,12 @@ fn print_help() {
         "hashseal-check {VERSION} — tiny instruct verify (blake3 + std)\n\n\
          Usage: hashseal-check [OPTIONS] [PATH]...\n\n\
          Options:\n\
-           --root DIR              Root to scan for *.md (default .)\n\
+           --root DIR              Root to scan for default instruct globs (default .)\n\
            --no-fail               Exit 0 even on mismatch\n\
            --require-signature     Require hashseal_sig (GPG)\n\
            -h, --help              Help\n\
-           -V, --version           Version"
+           -V, --version           Version\n\n\
+         With no PATH args, scans agent instruction files (AGENTS.md, CLAUDE.md,\n\
+         Copilot/Cursor/skill dirs, …) — same defaults as hashseal check."
     );
 }

@@ -3,7 +3,7 @@ name: hashseal-respect-seals
 description: >-
   HashSeal skill for Claude: treat sealed instruct files as authoritative,
   re-seal after edits, never strip hashseal fields, list every check failure.
-hashseal: "blake3:b666fbaa86489e20cb34fe07841df105c7f79acaf6f74f6a50bfa3f3c80615b9"
+hashseal: "blake3:e486bd0869e8cbb2c7b36e2ae3acf8b0e6d70f400d5f8873552e4931d2674e05"
 ---
 
 # HashSeal — respect sealed instructions (Claude)
