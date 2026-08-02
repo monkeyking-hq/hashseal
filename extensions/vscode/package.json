@@ -1,0 +1,59 @@
+{
+  "name": "hashseal",
+  "displayName": "HashSeal",
+  "description": "Seal and check instruction files / trees via the hashseal CLI (PATH or HASHSEAL_BIN).",
+  "version": "0.1.0",
+  "publisher": "hashseal",
+  "license": "Apache-2.0",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:hashseal.checkWorkspace",
+    "onCommand:hashseal.checkActiveFile",
+    "onCommand:hashseal.sealInstructWorkspace"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "hashseal.checkWorkspace",
+        "title": "HashSeal: Check Workspace"
+      },
+      {
+        "command": "hashseal.checkActiveFile",
+        "title": "HashSeal: Check Active File (document text)"
+      },
+      {
+        "command": "hashseal.sealInstructWorkspace",
+        "title": "HashSeal: Seal Instruct (Workspace)"
+      }
+    ],
+    "configuration": {
+      "title": "HashSeal",
+      "properties": {
+        "hashseal.bin": {
+          "type": "string",
+          "default": "",
+          "description": "Absolute path to hashseal CLI. Empty = HASHSEAL_BIN env, else hashseal on PATH."
+        },
+        "hashseal.checkBin": {
+          "type": "string",
+          "default": "",
+          "description": "Absolute path to hashseal-check. Empty = HASHSEAL_CHECK_BIN env, else hashseal-check on PATH. Used when preferCheckBinary is true."
+        },
+        "hashseal.preferCheckBinary": {
+          "type": "boolean",
+          "default": true,
+          "description": "Prefer tiny hashseal-check for workspace check when available."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "lint": "node -e \"require('./extension.js'); console.log('ok')\""
+  }
+}

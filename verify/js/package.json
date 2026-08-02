@@ -1,0 +1,33 @@
+{
+  "name": "@hashseal/verify",
+  "version": "0.1.0",
+  "description": "HashSeal zero-dependency instruct document verify (digest check)",
+  "license": "Apache-2.0",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "test": "node test/vectors.test.js && node test/tree-vectors.test.js"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "files": [
+    "index.js",
+    "check.js",
+    "tree.js",
+    "vendor/**"
+  ],
+  "dependencies": {},
+  "devDependencies": {},
+  "keywords": [
+    "hashseal",
+    "blake3",
+    "verify",
+    "instruct"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/monkeyking-hq/hashseal"
+  },
+  "author": "HashSeal <info@hashseal.ai>"
+}

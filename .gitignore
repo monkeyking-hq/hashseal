@@ -1,0 +1,75 @@
+# Rust
+/target/
+**/target/
+**/*.rs.bk
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# HashSeal local overlays / temp
+*.hashseal-overlay.json
+.hashseal-local/
+
+# Local agent / strategic planning (if re-dropped under docs/)
+docs/MEMORY.md
+docs/MVP-BACKLOG.md
+docs/MVP-OVERNIGHT-REPORT.md
+docs/BUILD-PROGRESS.md
+docs/BUILD-STANDING-ORDERS.md
+.hashseal/planning/
+
+# AI agent / coding-tool local folders (session state, not product)
+# Root-anchored only — do not use bare "kilo/" (would hide skills/kilo).
+.grok/
+.kilo/
+/kilo/
+.antigravity/
+.cursor/
+.claude/
+.codex/
+.continue/
+.aider*
+.windsurf/
+.specstory/
+.gemini/
+.github/copilot*
+AGENTS.local.md
+CLAUDE.local.md
+
+# Node / Java / Gradle build noise
+node_modules/
+.gradle/
+**/*.class
+verify/java/out/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# .NET (do not blanket-ignore "bin/" — plugins/npm/bin is source)
+**/bin/Debug/
+**/bin/Release/
+**/obj/
+
+# Monorepo-root seal output (fixture bundles under fixtures/ stay tracked)
+/hashseal-bundle/
+
+# Jekyll / Pages local build
+docs/_site/
+docs/.sass-cache/
+docs/.jekyll-cache/
+docs/.jekyll-metadata/
+.bundle/
+vendor/bundle/

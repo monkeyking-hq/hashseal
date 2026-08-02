@@ -1,0 +1,29 @@
+{
+  "$comment": "HashSeal Antigravity / agent host hints — not read by hashseal-core. Wire these to host tasks that spawn the CLI.",
+  "product": "HashSeal",
+  "preferCheckBinary": true,
+  "binEnv": {
+    "fullCli": "HASHSEAL_BIN",
+    "checkCli": "HASHSEAL_CHECK_BIN"
+  },
+  "commands": {
+    "check": {
+      "argv": ["hashseal-check", "--root", "."],
+      "fallback": ["hashseal", "check", "--root", "."]
+    },
+    "sealInstruct": {
+      "argv": ["hashseal", "seal", "--instruct", "--root", "."]
+    },
+    "sealTree": {
+      "argv": ["hashseal", "seal", "--tree", "--root", "."]
+    },
+    "verify": {
+      "argv": ["hashseal", "verify", "--root", "."]
+    }
+  },
+  "checkOn": ["save", "precommit"],
+  "notes": [
+    "Failures must surface every non-OK path with status and digests.",
+    "Never strip hashseal / hashseal_sig / hashseal_key_id from instruction files."
+  ]
+}

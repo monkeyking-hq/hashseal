@@ -1,0 +1,45 @@
+[
+  {
+    "label": "HashSeal: Check",
+    "command": "hashseal-check",
+    "args": ["--root", "$ZED_WORKTREE_ROOT"],
+    "use_new_terminal": false,
+    "allow_concurrent_runs": false,
+    "reveal": "always",
+    "env": {
+      "HASHSEAL_CHECK_BIN": "${HASHSEAL_CHECK_BIN}"
+    }
+  },
+  {
+    "label": "HashSeal: Check (full CLI)",
+    "command": "hashseal",
+    "args": ["check", "--root", "$ZED_WORKTREE_ROOT"],
+    "use_new_terminal": false,
+    "allow_concurrent_runs": false,
+    "reveal": "always"
+  },
+  {
+    "label": "HashSeal: Seal Instruct",
+    "command": "hashseal",
+    "args": ["seal", "--instruct", "--root", "$ZED_WORKTREE_ROOT"],
+    "use_new_terminal": false,
+    "allow_concurrent_runs": false,
+    "reveal": "always"
+  },
+  {
+    "label": "HashSeal: Seal Tree",
+    "command": "hashseal",
+    "args": ["seal", "--tree", "--root", "$ZED_WORKTREE_ROOT"],
+    "use_new_terminal": false,
+    "allow_concurrent_runs": false,
+    "reveal": "always"
+  },
+  {
+    "label": "HashSeal: Verify",
+    "command": "hashseal",
+    "args": ["verify", "--root", "$ZED_WORKTREE_ROOT"],
+    "use_new_terminal": false,
+    "allow_concurrent_runs": false,
+    "reveal": "always"
+  }
+]

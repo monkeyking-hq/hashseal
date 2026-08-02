@@ -1,0 +1,29 @@
+[workspace]
+resolver = "2"
+members = [
+    "rust/hashseal-core",
+    "rust/hashseal",
+    "rust/hashseal-check",
+    "rust/hashseal-wasm",
+]
+default-members = [
+    "rust/hashseal-core",
+    "rust/hashseal",
+    "rust/hashseal-check",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/monkeyking-hq/hashseal"
+homepage = "https://hashseal.ai"
+authors = ["HashSeal <info@hashseal.ai>"]
+rust-version = "1.75"
+
+[workspace.dependencies]
+# Prefer few direct deps. blake3 with default-features=false stays lean.
+hashseal-core = { path = "rust/hashseal-core", version = "0.1.0", default-features = true }
+blake3 = { version = "1.5", default-features = false, features = ["std"] }
+serde = { version = "1.0", default-features = false, features = ["std", "derive"] }
+serde_json = { version = "1.0", default-features = false, features = ["std"] }

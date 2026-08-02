@@ -1,0 +1,18 @@
+[package]
+name = "hashseal-wasm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+description = "HashSeal WASM verify surface"
+readme = "README.md"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# WASM: digest check only — same minimal core as hashseal-check
+hashseal-core = { path = "../hashseal-core", default-features = false, features = ["check"] }

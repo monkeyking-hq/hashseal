@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Verified by HashSeal">
+  <title>Verified by HashSeal</title>
+  <!-- Golden circlet + notch (family kinship) -->
+  <circle cx="32" cy="32" r="28" fill="none" stroke="#f5a524" stroke-width="3.5"/>
+  <rect x="29.5" y="2" width="5" height="5.5" fill="#0b0e14"/>
+  <!-- Seal ring -->
+  <circle cx="32" cy="32" r="20" fill="none" stroke="#3dd68c" stroke-width="2"/>
+  <!-- Soft green disc -->
+  <circle cx="32" cy="32" r="14" fill="#3dd68c" opacity="0.18"/>
+  <!-- Check -->
+  <path d="M22.5 33.5 L28.5 39.5 L42 24.5" fill="none" stroke="#3dd68c" stroke-width="3.25" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

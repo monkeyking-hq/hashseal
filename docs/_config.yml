@@ -1,0 +1,37 @@
+# GitHub Pages — docs/ as site root
+# Custom domain: set url to https://hashseal.ai and baseurl to "" when DNS is live.
+
+title: HashSeal
+description: >-
+  Seal and verify AI instruction files and build trees —
+  what was sealed is what you still have.
+url: https://hashseal.ai
+baseurl: ""
+# github_url: set when the public repo URL is known
+# github_url: https://github.com/ORG/hashseal
+
+markdown: kramdown
+kramdown:
+  input: GFM
+  syntax_highlighter_opts:
+    disable: true
+
+# No remote theme — custom layout + assets/css/site.css only
+plugins: []
+# On GitHub Pages, relative links work via built-in support; keep paths repo-relative in content.
+
+exclude:
+  - BUILD-PROGRESS.md
+  - BUILD-STANDING-ORDERS.md
+  - MVP-BACKLOG.md
+  - MVP-OVERNIGHT-REPORT.md
+  - MEMORY.md
+  - Gemfile
+  - Gemfile.lock
+  - vendor
+
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: default

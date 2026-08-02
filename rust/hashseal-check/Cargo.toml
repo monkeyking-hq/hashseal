@@ -1,0 +1,19 @@
+[package]
+name = "hashseal-check"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+description = "Tiny HashSeal verify binary (blake3 + std only)"
+readme = "README.md"
+
+[[bin]]
+name = "hashseal-check"
+path = "src/main.rs"
+
+[dependencies]
+# check feature: no serde/json — only blake3 transitively
+hashseal-core = { path = "../hashseal-core", default-features = false, features = ["check"] }

@@ -1,0 +1,27 @@
+[package]
+name = "hashseal-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+description = "HashSeal core: instruct seals, tree ledgers, verify (minimal deps)"
+readme = "README.md"
+
+[features]
+default = ["full"]
+# Tiny path: digests + instruct check/seal + optional gpg shell-out (std only + blake3)
+check = []
+# Full product: tree, config, reports, bundles (still no clap/chrono/uuid/toml crates)
+full = ["json"]
+json = ["dep:serde", "dep:serde_json"]
+
+[dependencies]
+blake3 = { workspace = true }
+serde = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }
+
+[dev-dependencies]
+tempfile = "3.14"

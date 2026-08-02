@@ -1,0 +1,19 @@
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="site-header__inner">
+    <a class="brand" href="{{ '/' | relative_url }}">
+      <img class="brand__mark" src="{{ '/assets/logo/mark.svg' | relative_url }}" width="28" height="28" alt="" />
+      <span class="brand__name">HashSeal</span>
+    </a>
+    <nav class="nav" aria-label="Primary">
+      <a href="{{ '/instruct/' | relative_url }}"{% if page.url == '/instruct/' or page.url contains '/instruct/' %} aria-current="page"{% endif %}>Instruct</a>
+      <a href="{{ '/build/' | relative_url }}"{% if page.url == '/build/' or page.url contains '/build/' %} aria-current="page"{% endif %}>Build</a>
+      <a href="{{ '/install.html' | relative_url }}"{% if page.url contains 'install' %} aria-current="page"{% endif %}>Install</a>
+      <a href="{{ '/cli.html' | relative_url }}"{% if page.url contains 'cli' %} aria-current="page"{% endif %}>CLI</a>
+      <a href="{{ '/security.html' | relative_url }}"{% if page.url contains 'security' %} aria-current="page"{% endif %}>Security</a>
+      {% if site.github_url %}
+      <a class="nav__ext" href="{{ site.github_url }}" rel="noopener noreferrer">GitHub</a>
+      {% endif %}
+    </nav>
+  </div>
+</header>

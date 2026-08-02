@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>HashSeal Check</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header class="header">
+      <img class="header__mark" src="icons/mark.svg" width="28" height="28" alt="" />
+      <div>
+        <h1>HashSeal</h1>
+        <p class="tagline">Signed, Sealed, Delivered - I'm Yours.</p>
+      </div>
+    </header>
+
+    <section class="controls">
+      <label for="doc">Paste sealed Markdown</label>
+      <textarea
+        id="doc"
+        rows="12"
+        spellcheck="false"
+        placeholder="---&#10;hashseal: &quot;blake3:…&quot;&#10;---&#10;# Rules&#10;"
+      ></textarea>
+      <div class="row">
+        <button type="button" id="btn-check" class="primary">Check</button>
+        <button type="button" id="btn-clear" class="ghost">Clear</button>
+        <button type="button" id="btn-sample" class="ghost">Load sample</button>
+      </div>
+      <p class="hint">
+        Pure JS digest check (FULL canonical). Does not call a network or CLI.
+      </p>
+    </section>
+
+    <section id="summary" class="summary" hidden></section>
+    <section id="results" class="results" aria-live="polite"></section>
+
+    <footer>
+      <span>Copyright (c) 2026 MonkeyKing.dev</span>
+    </footer>
+
+    <script src="lib/hashseal-verify.browser.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>

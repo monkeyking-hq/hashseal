@@ -1,0 +1,37 @@
+{
+  "name": "@hashseal/npm-plugin",
+  "version": "0.1.0",
+  "description": "HashSeal npm plugin — thin wrapper that shells to the hashseal CLI",
+  "license": "Apache-2.0",
+  "main": "index.js",
+  "type": "commonjs",
+  "bin": {
+    "hashseal-npm": "bin/hashseal-npm.js"
+  },
+  "scripts": {
+    "seal": "node bin/hashseal-npm.js seal",
+    "check": "node bin/hashseal-npm.js check",
+    "verify": "node bin/hashseal-npm.js verify"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "files": [
+    "index.js",
+    "bin/**",
+    "README.md"
+  ],
+  "dependencies": {},
+  "devDependencies": {},
+  "keywords": [
+    "hashseal",
+    "integrity",
+    "seal",
+    "verify"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/monkeyking-hq/hashseal"
+  },
+  "author": "HashSeal <info@hashseal.ai>"
+}

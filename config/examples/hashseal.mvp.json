@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "document": {
+    "enable": true,
+    "include": ["**/*.md"],
+    "canonical": "full",
+    "field": "hashseal",
+    "auto_frontmatter": true,
+    "algorithm": "blake3"
+  },
+  "tree": {
+    "include": ["**/*"],
+    "exclude": [
+      "**/.git/**",
+      "**/target/**",
+      "**/node_modules/**",
+      "**/hashseal-bundle/**",
+      "**/.hashseal/**"
+    ],
+    "line_endings": "lf-text",
+    "algorithm": "blake3"
+  },
+  "signing": {
+    "enable": false,
+    "require": false
+  },
+  "report": {
+    "write": true,
+    "pretty": true
+  },
+  "enforce": {
+    "on_tree_mismatch": "fail",
+    "on_doc_mismatch": "fail",
+    "on_missing_ledger": "fail"
+  }
+}

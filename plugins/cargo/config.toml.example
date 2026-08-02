@@ -1,0 +1,7 @@
+# Example cargo aliases for HashSeal (copy snippets into .cargo/config.toml).
+# Copyright (c) 2026 MonkeyKing.dev
+
+[alias]
+# Workspace-local (run crates without install):
+hashseal = ["run", "-p", "hashseal", "--"]
+hashseal-check = ["run", "-p", "hashseal-check", "--"]

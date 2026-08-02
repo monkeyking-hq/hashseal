@@ -1,0 +1,17 @@
+<!--
+  HashSeal verify library — zero NuGet package dependencies.
+  Copyright (c) 2026 MonkeyKing.dev
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>Hashseal.Verify</RootNamespace>
+    <AssemblyName>Hashseal.Verify</AssemblyName>
+    <Description>Zero-dep HashSeal instruct document verifier (FULL canonical mode)</Description>
+    <Version>0.1.0</Version>
+  </PropertyGroup>
+  <!-- No PackageReference — framework only -->
+</Project>

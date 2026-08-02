@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 148" role="img" aria-label="HashSeal">
+  <title>HashSeal</title>
+  <g transform="translate(32,8)">
+    <circle cx="32" cy="32" r="28" fill="none" stroke="#f5a524" stroke-width="3.5"/>
+    <rect x="29.5" y="2" width="5" height="5.5" fill="#0b0e14"/>
+    <circle cx="32" cy="32" r="20" fill="none" stroke="#5b9fd4" stroke-width="2.25"/>
+    <circle cx="32" cy="32" r="13.5" fill="none" stroke="#5b9fd4" stroke-width="1.75"/>
+    <circle cx="32" cy="32" r="6.5" fill="#5b9fd4"/>
+  </g>
+  <text x="64" y="112" text-anchor="middle" font-family="system-ui,Segoe UI,sans-serif" font-size="22" font-weight="650" letter-spacing="0.02em" fill="#e7ecf3">HashSeal</text>
+  <rect x="28" y="122" width="72" height="1.5" rx="0.75" fill="#f5a524" opacity="0.85"/>
+</svg>

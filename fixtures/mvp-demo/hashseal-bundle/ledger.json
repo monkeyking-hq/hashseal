@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "sealed_at": "2026-08-02T17:13:59Z",
+  "root": ".",
+  "algorithm": "blake3",
+  "tool_version": "0.1.0",
+  "entries": [
+    {
+      "path": ".hashseal.json",
+      "digest": "blake3:84fa3d0dbe31fb2cd9a8cf8b2c1e62bbf2b3546dead7f02d37b644698e30fb79",
+      "size": 697
+    },
+    {
+      "path": "AGENTS.md",
+      "digest": "blake3:4fe8faab39a984f7332eb98461378e3d8599efc3700751f3cea2eacde185a2c5",
+      "size": 411
+    },
+    {
+      "path": "README.md",
+      "digest": "blake3:7d818d038143d5e3d34d8e6b2abaa0507096814b7e99fd4c22e1f6fd0520802b",
+      "size": 1858
+    },
+    {
+      "path": "src/hello.txt",
+      "digest": "blake3:1ee449e0f95162dd010064e5e2cf63186f9e559dea1050df53b879567cec2084",
+      "size": 39
+    }
+  ]
+}
