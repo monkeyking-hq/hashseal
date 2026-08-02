@@ -31,14 +31,17 @@ Or open the Markdown as source and rely on GitHub’s Pages build after push.
 ## Deploy
 
 1. Repo **Settings → Pages → Build from branch**, folder **`/docs`**.
-2. Site works at `https://monkeyking-hq.github.io/hashseal/` with no custom domain.
+2. **`_config.yml`:**
+   - Custom domain (**current**): `url: https://hashseal.ai` and `baseurl: ""`
+   - Project pages only (no custom domain): `url: https://monkeyking-hq.github.io` and `baseurl: /hashseal`
 3. **Custom domain (`hashseal.ai`) — order matters:**
    1. In GitHub (org or Pages UI), start domain setup and copy the **TXT** verification record GitHub shows.
    2. Add that TXT at the DNS host; wait for verification to succeed.
    3. Add apex/www records per [GitHub Pages custom domain](https://docs.github.com/pages/configuring-a-custom-domain-for-your-github-pages-site) (A/AAAA or ALIAS/ANAME for apex; CNAME for `www` if used).
    4. In **Settings → Pages**, set Custom domain to `hashseal.ai` and enable **Enforce HTTPS** once DNS is green.
-   5. Optionally commit `docs/CNAME` containing a single line `hashseal.ai` so the domain survives branch deploys (or let the Pages UI keep it).
-4. When the public GitHub URL is known, set `github_url` in `_config.yml` so the header GitHub link appears.
+   5. Keep `docs/CNAME` as `hashseal.ai` so the domain survives branch deploys.
+4. After DNS cutover, **always** set `baseurl: ""` — a leftover `baseurl: /hashseal` makes CSS/JS load as `/hashseal/assets/...` and **404** on the apex domain.
+
 
 ## Private files
 
