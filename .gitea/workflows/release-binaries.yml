@@ -1,0 +1,47 @@
+# Multi-target release binary skeleton for the stonemonkey Gitea runner.
+# Linux amd64 only — no windows/macos runner is registered.
+#
+# Copyright (c) 2026 MonkeyKing.dev
+
+name: release-binaries
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: x86_64-unknown-linux-gnu
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-gnu
+
+      - name: Build release binaries
+        run: |
+          cargo build -p hashseal --release --target x86_64-unknown-linux-gnu
+          cargo build -p hashseal-check --release --target x86_64-unknown-linux-gnu
+
+      - name: Stage artifacts
+        run: |
+          STAGE=dist/hashseal-x86_64-unknown-linux-gnu
+          mkdir -p "$STAGE"
+          cp target/x86_64-unknown-linux-gnu/release/hashseal "$STAGE/"
+          cp target/x86_64-unknown-linux-gnu/release/hashseal-check "$STAGE/"
+          cp LICENSE "$STAGE/" 2>/dev/null || true
+          echo "HashSeal release binaries for x86_64-unknown-linux-gnu" > "$STAGE/README.txt"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hashseal-x86_64-unknown-linux-gnu
+          path: dist/hashseal-x86_64-unknown-linux-gnu/
