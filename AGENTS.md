@@ -1,6 +1,8 @@
 ---
-hashseal: "blake3:550bab70c20571a99b0f62452b7e3e693e10fc77e44a61b8b43961cbcab7d8cd"
+hashseal: "blake3:0ade3f60a348562e22a5c37e89e3bbf680f4fb95bb6a4d1cf4ff18fb27e86398"
 ---
+This project follows the Universal Code v1.0.0 — read https://github.com/monkeyking-hq/universal-code/blob/main/UC-EMBED-v1.0.0.md
+
 # AGENTS.md — HashSeal workspace
 
 ## Memory (read first — local only)

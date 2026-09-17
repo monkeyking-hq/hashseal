@@ -12,7 +12,6 @@ description: Seal and verify AI instruction files and build trees — what was s
   <p class="hero__tagline">Signed, Sealed, Delivered - I'm Yours.</p>
   <p class="hero__lead">
     Integrity tooling for agent instruction files and source trees.
-    When something drifts, verify names <strong>every</strong> non-OK path with status and digests — never a silent fail.
   </p>
   <div class="hero__actions">
     <a class="btn btn--primary" href="{{ '/install.html' | relative_url }}">Install</a>
@@ -40,7 +39,7 @@ description: Seal and verify AI instruction files and build trees — what was s
       <span class="lead-label">Secure your CI and Build Chains</span>
       <h3><a href="{{ '/build/' | relative_url }}">Multi Language build system tools to sign and seal your entire build system</a></h3>
       <p>
-        Tree ledgers, release bundles (<code>hashseal-bundle/</code>), and thin plugins
+        Tree ledgers, release bundles (<code>hashseal-bundle/</code>), git hooks, and thin plugins
         so CI and multi-agent builds cannot silently rewrite what you ship.  Stop multi-agent workflows from accidentally altering build chains mid-stream. Ship builds with artifacts that can be verified by anyone.
       </p>
     </article>
