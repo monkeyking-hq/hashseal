@@ -1,9 +1,14 @@
 ---
-hashseal: "blake3:0ade3f60a348562e22a5c37e89e3bbf680f4fb95bb6a4d1cf4ff18fb27e86398"
+hashseal: "blake3:996a19c821ff3893df5c229e9c3d4d26fe5e340991825e8060af15a8a971f6d6"
 ---
 This project follows the Universal Code v1.0.0 — read https://github.com/monkeyking-hq/universal-code/blob/main/UC-EMBED-v1.0.0.md
 
 # AGENTS.md — HashSeal workspace
+
+
+**Working forge (Gitea):** `MonkeyKing.dev/hashseal` (`mkd-git:37374` / `stonemonkey:37373`). Use **`tea`**, never **`gh`**. See workspace `AGENTS.md`.
+
+**Public GitHub mirror:** https://github.com/monkeyking-hq/hashseal (do not use `gh` for company `mkd-*` work).
 
 ## Memory (read first — local only)
 
