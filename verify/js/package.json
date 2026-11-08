@@ -2,7 +2,7 @@
   "name": "@hashseal/verify",
   "version": "0.1.0",
   "description": "HashSeal zero-dependency instruct document verify (digest check)",
-  "license": "Apache-2.0",
+  "license": "MIT",
   "main": "index.js",
   "type": "commonjs",
   "scripts": {

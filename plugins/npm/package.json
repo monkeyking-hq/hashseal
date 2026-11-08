@@ -2,7 +2,7 @@
   "name": "@hashseal/npm-plugin",
   "version": "0.1.0",
   "description": "HashSeal npm plugin — thin wrapper that shells to the hashseal CLI",
-  "license": "Apache-2.0",
+  "license": "MIT",
   "main": "index.js",
   "type": "commonjs",
   "bin": {
