@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:996a19c821ff3893df5c229e9c3d4d26fe5e340991825e8060af15a8a971f6d6"
+hashseal: "blake3:f293f03022c09b1cf53c3abcb79a68da67e51fd647f55e7b1eabe7cc77393634"
 ---
 This project follows the Universal Code v1.0.0 — read https://github.com/monkeyking-hq/universal-code/blob/main/UC-EMBED-v1.0.0.md
 
@@ -35,10 +35,10 @@ Public site: `docs/` (GitHub Pages) — `docs/instruct/`, `docs/build/`, custom 
 2. **Core-first:** Integrity logic lives in `hashseal-core`. Plugins and extensions are thin adapters.
 3. **Verify UX:** Failures must list **every** non-OK path with status and digests—never silent exit-only fails.
 4. **TDD:** Vectors and tests first for seal/check behavior; multi-lang verify must share vectors.
-5. **Branding:** Product voice is HashSeal. MonkeyKing.dev only in copyright/footer:
-   `Copyright (c) 2026 MonkeyKing.dev`
+5. **Branding:** Product voice is HashSeal.
+   `Copyright (c) 2026 Nathan A Chadwick`
 6. **Contacts:** `info@hashseal.ai` (general), `security@hashseal.ai` (security).
-7. **License:** Apache-2.0.
+7. **License:** MIT.
 8. **CLI vocabulary:** Prefer `--instruct` (not `--docs`) for agent instruction sealing.
 9. **Repo-relative paths:** Tests, scripts, and docs that load shared assets must use paths
    **relative to the monorepo root** (e.g. `verify/vectors/instruct-v1.json`, `fixtures/mvp-demo/`).

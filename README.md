@@ -13,7 +13,7 @@ HashSeal is integrity tooling for two related problems:
 
 | | |
 |--|--|
-| License | Apache-2.0 |
+| License | MIT |
 | Contact | [info@hashseal.ai](mailto:info@hashseal.ai) · Security: [security@hashseal.ai](mailto:security@hashseal.ai) |
 | Org (footer only) | MonkeyKing.dev |
 
@@ -265,10 +265,14 @@ mvn -f verify/java/pom.xml test
 
 ---
 
+## Universal Code
+
+This project follows the [Universal Code](https://github.com/monkeyking-hq/universal-code). See [`UC-EMBED-v1.0.0.md`](https://github.com/monkeyking-hq/universal-code/blob/main/UC-EMBED-v1.0.0.md) for details.
+
 ## License
 
-Apache-2.0 — see [LICENSE](LICENSE).
+Released under the [MIT License](LICENSE).
 
 ```text
-Copyright (c) 2026 MonkeyKing.dev
+Copyright (c) 2026 Nathan A Chadwick
 ```

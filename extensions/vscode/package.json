@@ -4,7 +4,7 @@
   "description": "Seal and check instruction files / trees via the hashseal CLI (PATH or HASHSEAL_BIN).",
   "version": "0.1.0",
   "publisher": "hashseal",
-  "license": "Apache-2.0",
+  "license": "MIT",
   "engines": {
     "vscode": "^1.85.0"
   },
