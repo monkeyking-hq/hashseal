@@ -9,8 +9,11 @@ pub mod digest;
 pub mod error;
 pub mod gpg;
 pub mod instruct;
+#[cfg(feature = "json")]
+pub mod lockfile;
 pub mod report;
 pub mod result;
+pub mod signing;
 pub mod timeutil;
 pub mod tree;
 pub mod unicode;
@@ -33,6 +36,10 @@ pub use instruct::{
 };
 pub use report::{write_report, AuditReport, ReportBuilder};
 pub use result::{BatchCheckResult, CheckResult, CheckStatus};
+pub use signing::{
+    sign_bytes, sign_instruct_digest, signing_payload_v2, verify_bytes, verify_instruct_digest,
+    SignFormat, SigningOptions, VerifyOutcome,
+};
 pub use tree::{
     clean_tree_artifacts, collect_tree_files, seal_tree, verify_tree, Ledger, TreeSealOptions,
     TreeVerifyResult,
@@ -42,7 +49,12 @@ pub use unicode::{
 };
 
 #[cfg(feature = "json")]
-pub use bundle::{read_manifest, verify_bundle};
+pub use bundle::{read_manifest, sign_bundle, verify_bundle, verify_bundle_with_signing};
+#[cfg(feature = "json")]
+pub use lockfile::{
+    build_lockfile, read_lockfile, sign_lockfile, verify_lockfile, write_lockfile, LockEntry,
+    Lockfile, LOCKFILE_NAME, LOCKFILE_SIG_NAME,
+};
 #[cfg(feature = "json")]
 pub use tree::{read_ledger, write_ledger};
 

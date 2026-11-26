@@ -2,22 +2,29 @@
 //! Copyright (c) 2026 MonkeyKing.dev
 
 use clap::{Parser, Subcommand, ValueEnum};
-use hashseal_core::bundle::{digest_artifacts, verify_bundle, write_bundle, BundlePaths};
+use hashseal_core::bundle::{
+    digest_artifacts, sign_bundle, verify_bundle_with_signing, write_bundle, BundlePaths,
+};
 use hashseal_core::config::HashSealConfig;
-use hashseal_core::gpg::GpgConfig;
 use hashseal_core::instruct::{
     check_instruct_path_with, seal_instruct_path_with, unseal_instruct_bytes, CheckOpts,
     InstructOptions, SealOpts,
 };
+use hashseal_core::lockfile::{
+    build_lockfile, sign_lockfile, verify_lockfile, write_lockfile, LOCKFILE_NAME,
+};
 use hashseal_core::report::{write_report, ReportBuilder};
 use hashseal_core::result::{BatchCheckResult, CheckResult};
+use hashseal_core::signing::{SignFormat, SigningOptions};
 use hashseal_core::tree::{
     clean_tree_artifacts, read_ledger, seal_tree, verify_tree, write_ledger, TreeSealOptions,
 };
+use hashseal_core::walk::{any_glob, is_skipped_dir_name};
 use hashseal_core::{CheckStatus, UnicodePolicy, VERSION};
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::ExitCode;
+use std::process::{Command, ExitCode};
+
 #[derive(Parser, Debug)]
 #[command(
     name = "hashseal",
@@ -32,7 +39,7 @@ struct Cli {
 #[derive(Subcommand, Debug)]
 enum Commands {
     Version,
-    /// Seal tree and/or instruct files; optional release bundle
+    /// Seal tree and/or instruct files; optional release bundle and lockfile
     Seal {
         #[arg(long)]
         instruct: bool,
@@ -44,8 +51,16 @@ enum Commands {
         release: bool,
         #[arg(long)]
         sign: bool,
+        #[arg(long, value_enum)]
+        sign_format: Option<SignFormatArg>,
         #[arg(long)]
         signing_key: Option<String>,
+        /// Bind signature to scope='*' for portable skill/instruction packs
+        #[arg(long)]
+        portable: bool,
+        /// Write .hashseal.lock covering sealed instruct files
+        #[arg(long)]
+        lock: bool,
         #[arg(long, default_value = ".")]
         root: PathBuf,
         #[arg(long)]
@@ -62,7 +77,7 @@ enum Commands {
         #[arg(long, value_enum, default_value_t = OutputFormat::Human)]
         format: OutputFormat,
     },
-    /// Verify tree ledger and/or instruct files
+    /// Verify tree ledger and/or integrity bundle
     Verify {
         #[arg(long, default_value = ".")]
         root: PathBuf,
@@ -75,10 +90,18 @@ enum Commands {
         bundle: Option<PathBuf>,
         #[arg(long)]
         no_fail: bool,
+        #[arg(long)]
+        require_signature: bool,
+        #[arg(long)]
+        digest_only: bool,
+        #[arg(long)]
+        allowed_signers: Option<PathBuf>,
+        #[arg(long = "allowed-key")]
+        allowed_keys: Vec<String>,
         #[arg(long, value_enum, default_value_t = OutputFormat::Human)]
         format: OutputFormat,
     },
-    /// Fast instruct-file check
+    /// Fast instruct-file check (supports lockfile and --diff PR gate)
     Check {
         paths: Vec<PathBuf>,
         #[arg(long, default_value = ".")]
@@ -91,6 +114,19 @@ enum Commands {
         no_fail: bool,
         #[arg(long)]
         require_signature: bool,
+        #[arg(long)]
+        digest_only: bool,
+        #[arg(long)]
+        lock: Option<PathBuf>,
+        #[arg(long)]
+        no_lock: bool,
+        #[arg(long)]
+        allowed_signers: Option<PathBuf>,
+        #[arg(long = "allowed-key")]
+        allowed_keys: Vec<String>,
+        /// Check only instruct files changed vs git base ref (e.g. origin/main)
+        #[arg(long)]
+        diff: Option<String>,
         #[arg(long, value_enum)]
         unicode_policy: Option<UnicodePolicyArg>,
     },
@@ -133,6 +169,23 @@ impl From<UnicodePolicyArg> for UnicodePolicy {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum SignFormatArg {
+    Auto,
+    Ssh,
+    Gpg,
+}
+
+impl From<SignFormatArg> for SignFormat {
+    fn from(a: SignFormatArg) -> Self {
+        match a {
+            SignFormatArg::Auto => SignFormat::Auto,
+            SignFormatArg::Ssh => SignFormat::Ssh,
+            SignFormatArg::Gpg => SignFormat::Gpg,
+        }
+    }
+}
+
 fn main() -> ExitCode {
     let cli = Cli::parse();
     match run(cli) {
@@ -157,7 +210,10 @@ fn run(cli: Cli) -> Result<ExitCode, Box<dyn std::error::Error>> {
             tree,
             release,
             sign,
+            sign_format,
             signing_key,
+            portable,
+            lock,
             root,
             config,
             overlay,
@@ -170,9 +226,17 @@ fn run(cli: Cli) -> Result<ExitCode, Box<dyn std::error::Error>> {
             let upol = unicode_policy
                 .map(Into::into)
                 .unwrap_or(cfg.document_unicode_policy()?);
+            let s_opts = signing_from(
+                &root,
+                &cfg,
+                sign_format.map(Into::into),
+                signing_key,
+                None,
+                &[],
+            )?;
+
             let do_instruct = instruct || (!tree && !release && cfg.document.enable);
             let do_tree = tree || release || (!instruct && !release);
-            // if only --instruct, skip tree; if only --tree, skip instruct unless document.enable and not exclusive
             let do_instruct = if instruct && !tree && !release {
                 true
             } else if tree && !instruct && !release {
@@ -187,10 +251,19 @@ fn run(cli: Cli) -> Result<ExitCode, Box<dyn std::error::Error>> {
             };
 
             if do_instruct {
-                run_seal_instruct(&root, &cfg, sign, signing_key.clone(), upol, format)?;
+                run_seal_instruct(&root, &cfg, sign, &s_opts, portable, lock, upol, format)?;
             }
             if do_tree || release {
-                run_seal_tree(&root, &cfg, ledger.as_deref(), release, &artifacts, format)?;
+                run_seal_tree(
+                    &root,
+                    &cfg,
+                    ledger.as_deref(),
+                    release,
+                    sign,
+                    &s_opts,
+                    &artifacts,
+                    format,
+                )?;
             }
             if !do_instruct && !do_tree && !release {
                 return Err("nothing to seal; use --instruct, --tree, and/or --release".into());
@@ -203,15 +276,33 @@ fn run(cli: Cli) -> Result<ExitCode, Box<dyn std::error::Error>> {
             ledger,
             bundle,
             no_fail,
+            require_signature,
+            digest_only,
+            allowed_signers,
+            allowed_keys,
             format,
-        } => run_verify(
-            &root,
-            config.as_deref(),
-            ledger.as_deref(),
-            bundle.as_deref(),
-            no_fail,
-            format,
-        ),
+        } => {
+            let cfg = load_config(&root, config.as_deref(), None)?;
+            let s_opts = signing_from(
+                &root,
+                &cfg,
+                None,
+                None,
+                allowed_signers.as_deref(),
+                &allowed_keys,
+            )?;
+            run_verify(
+                &root,
+                &cfg,
+                ledger.as_deref(),
+                bundle.as_deref(),
+                no_fail,
+                require_signature || cfg.signing.require,
+                digest_only,
+                &s_opts,
+                format,
+            )
+        }
         Commands::Check {
             paths,
             root,
@@ -219,12 +310,26 @@ fn run(cli: Cli) -> Result<ExitCode, Box<dyn std::error::Error>> {
             format,
             no_fail,
             require_signature,
+            digest_only,
+            lock,
+            no_lock,
+            allowed_signers,
+            allowed_keys,
+            diff,
             unicode_policy,
         } => {
             let cfg = load_config(&root, config.as_deref(), None)?;
             let upol = unicode_policy
                 .map(Into::into)
                 .unwrap_or(cfg.document_unicode_policy()?);
+            let s_opts = signing_from(
+                &root,
+                &cfg,
+                None,
+                None,
+                allowed_signers.as_deref(),
+                &allowed_keys,
+            )?;
             run_check(
                 &root,
                 &paths,
@@ -232,6 +337,11 @@ fn run(cli: Cli) -> Result<ExitCode, Box<dyn std::error::Error>> {
                 format,
                 no_fail,
                 require_signature || cfg.signing.require,
+                digest_only,
+                lock.as_deref(),
+                no_lock,
+                diff.as_deref(),
+                &s_opts,
                 upol,
             )
         }
@@ -256,8 +366,8 @@ fn run(cli: Cli) -> Result<ExitCode, Box<dyn std::error::Error>> {
                 bundle.ledger,
                 bundle.report,
                 bundle.manifest,
+                bundle.dir.join("MANIFEST.json.sig"),
             ])?;
-            // remove bundle dir if empty
             let _ = fs::remove_dir(bundle.dir);
             println!("HashSeal: cleaned ledger/report/bundle artifacts");
             Ok(ExitCode::SUCCESS)
@@ -283,15 +393,45 @@ fn load_config(
     Ok(cfg)
 }
 
-fn gpg_from(cfg: &HashSealConfig, signing_key: Option<String>) -> GpgConfig {
-    let mut gpg = GpgConfig::from_git();
+fn signing_from(
+    root: &Path,
+    cfg: &HashSealConfig,
+    cli_format: Option<SignFormat>,
+    cli_key: Option<String>,
+    cli_allowed_signers: Option<&Path>,
+    cli_allowed_keys: &[String],
+) -> Result<SigningOptions, Box<dyn std::error::Error>> {
+    let mut opts = SigningOptions::from_git_and_root(Some(root));
+    if let Some(fmt_str) = &cfg.signing.format {
+        opts.format = fmt_str.parse()?;
+    }
+    if let Some(fmt) = cli_format {
+        opts.format = fmt;
+    }
     if let Some(p) = &cfg.signing.gpg_program {
-        gpg.program = PathBuf::from(p);
+        opts.gpg_program = PathBuf::from(p);
     }
-    if let Some(k) = signing_key.or_else(|| cfg.signing.signing_key.clone()) {
-        gpg.signing_key = Some(k);
+    if let Some(k) = cli_key.or_else(|| cfg.signing.signing_key.clone()) {
+        opts.signing_key = Some(k);
     }
-    gpg
+    if let Some(s) = cli_allowed_signers {
+        opts.allowed_signers = Some(s.to_path_buf());
+    } else if let Some(s) = &cfg.signing.allowed_signers {
+        let pb = PathBuf::from(s);
+        opts.allowed_signers = Some(if pb.is_absolute() { pb } else { root.join(pb) });
+    }
+    if !cli_allowed_keys.is_empty() {
+        opts.allowed_key_ids = cli_allowed_keys.to_vec();
+    } else if !cfg.signing.allowed_key_ids.is_empty() {
+        opts.allowed_key_ids = cfg.signing.allowed_key_ids.clone();
+    }
+    Ok(opts)
+}
+
+fn rel_posix(root: &Path, path: &Path) -> Option<String> {
+    path.strip_prefix(root)
+        .ok()
+        .map(|r| r.to_string_lossy().replace('\\', "/"))
 }
 
 fn collect_md_files(
@@ -312,7 +452,6 @@ fn collect_md_files(
             })
             .collect());
     }
-    // reuse tree collector with default instruct includes when empty
     let opts = TreeSealOptions {
         include: if include.is_empty() {
             hashseal_core::default_document_includes()
@@ -325,32 +464,104 @@ fn collect_md_files(
     Ok(hashseal_core::collect_tree_files(root, &opts)?)
 }
 
+fn collect_diff_md_files(
+    root: &Path,
+    base_ref: &str,
+    include: &[String],
+    exclude: &[String],
+) -> Result<Vec<PathBuf>, Box<dyn std::error::Error>> {
+    let range = format!("{base_ref}...HEAD");
+    let mut out = Command::new("git")
+        .arg("-C")
+        .arg(root)
+        .args(["diff", "--name-only", "--diff-filter=ACMR", &range])
+        .output()?;
+    if !out.status.success() {
+        out = Command::new("git")
+            .arg("-C")
+            .arg(root)
+            .args(["diff", "--name-only", "--diff-filter=ACMR", base_ref])
+            .output()?;
+    }
+    if !out.status.success() {
+        let err = String::from_utf8_lossy(&out.stderr);
+        return Err(format!("git diff against '{base_ref}' failed: {}", err.trim()).into());
+    }
+
+    let effective_inc = if include.is_empty() {
+        hashseal_core::default_document_includes()
+    } else {
+        include.to_vec()
+    };
+
+    let mut matched = Vec::new();
+    for line in String::from_utf8_lossy(&out.stdout).lines() {
+        let rel = line.trim().replace('\\', "/");
+        if rel.is_empty() {
+            continue;
+        }
+        if rel.split('/').any(is_skipped_dir_name) || any_glob(exclude, &rel) {
+            continue;
+        }
+        if any_glob(&effective_inc, &rel) {
+            let full = root.join(rel.replace('/', std::path::MAIN_SEPARATOR_STR));
+            if full.is_file() {
+                matched.push(full);
+            }
+        }
+    }
+    matched.sort();
+    Ok(matched)
+}
+
+#[allow(clippy::too_many_arguments)]
 fn run_seal_instruct(
     root: &Path,
     cfg: &HashSealConfig,
     sign: bool,
-    signing_key: Option<String>,
+    signing: &SigningOptions,
+    portable: bool,
+    write_lock: bool,
     unicode_policy: UnicodePolicy,
     format: OutputFormat,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let sign = sign || cfg.signing.enable;
-    let opts = SealOpts {
-        instruct: InstructOptions {
-            field: cfg.document.field.clone(),
-            algorithm: cfg.document_algorithm()?,
-            canonical: cfg.document_canonical(),
-            auto_frontmatter: cfg.document.auto_frontmatter,
-            unicode_policy,
-        },
-        sign,
-        gpg: gpg_from(cfg, signing_key),
+    let instruct_opts = InstructOptions {
+        field: cfg.document.field.clone(),
+        algorithm: cfg.document_algorithm()?,
+        canonical: cfg.document_canonical(),
+        auto_frontmatter: cfg.document.auto_frontmatter,
+        unicode_policy,
     };
     let files = collect_md_files(root, &[], &cfg.document.include, &cfg.document.exclude)?;
     let mut digests = Vec::new();
     for path in &files {
+        let scope = if portable {
+            Some("*".to_string())
+        } else {
+            rel_posix(root, path)
+        };
+        let opts = SealOpts {
+            instruct: instruct_opts.clone(),
+            sign,
+            signing: signing.clone(),
+            scope,
+        };
         let d = seal_instruct_path_with(path, &opts)?;
         digests.push((path.clone(), d.qualified()));
     }
+    let lock_path = if write_lock {
+        let lp = root.join(LOCKFILE_NAME);
+        let lock = build_lockfile(root, &files, &instruct_opts)?;
+        write_lockfile(&lp, &lock)?;
+        if sign {
+            sign_lockfile(&lp, signing)?;
+        }
+        Some(lp)
+    } else {
+        None
+    };
+
     match format {
         OutputFormat::Human => {
             let mode = if sign { "sealed+signed" } else { "sealed" };
@@ -358,32 +569,37 @@ fn run_seal_instruct(
             for (p, d) in &digests {
                 println!("  {d}  {}", p.display());
             }
+            if let Some(lp) = lock_path {
+                println!("HashSeal: wrote lockfile {}", lp.display());
+            }
         }
         OutputFormat::Json => {
             println!(
                 "{}",
-                serde_json::to_string_pretty(
-                    &digests
-                        .iter()
-                        .map(|(p, d)| {
-                            serde_json::json!({"path": p, "digest": d, "signed": sign})
-                        })
-                        .collect::<Vec<_>>()
-                )?
+                serde_json::to_string_pretty(&serde_json::json!({
+                    "sealed": digests.iter().map(|(p, d)| {
+                        serde_json::json!({"path": p, "digest": d, "signed": sign})
+                    }).collect::<Vec<_>>(),
+                    "lockfile": lock_path,
+                }))?
             );
         }
     }
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn run_seal_tree(
     root: &Path,
     cfg: &HashSealConfig,
     ledger_override: Option<&Path>,
     release: bool,
+    sign: bool,
+    signing: &SigningOptions,
     artifacts: &[PathBuf],
     format: OutputFormat,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    let sign = sign || cfg.signing.enable;
     let opts = TreeSealOptions {
         algorithm: cfg.tree_algorithm()?,
         include: cfg.tree.include.clone(),
@@ -415,6 +631,11 @@ fn run_seal_tree(
             digest_artifacts(artifacts, opts.algorithm)?
         };
         let paths = write_bundle(root, &ledger, &report, &arts)?;
+        let sig_path = if sign {
+            Some(sign_bundle(&paths.dir, signing)?)
+        } else {
+            None
+        };
         if format == OutputFormat::Human {
             println!(
                 "HashSeal: tree sealed {} file(s) → {}",
@@ -424,6 +645,9 @@ fn run_seal_tree(
             for a in &arts {
                 println!("  artifact {}  {}", a.digest, a.name);
             }
+            if let Some(sp) = sig_path {
+                println!("  signed   {}", sp.display());
+            }
         } else {
             println!(
                 "{}",
@@ -431,6 +655,7 @@ fn run_seal_tree(
                     "entries": ledger.entries.len(),
                     "bundle": paths.dir,
                     "artifacts": arts,
+                    "signature": sig_path,
                 })
             );
         }
@@ -458,15 +683,18 @@ fn run_seal_tree(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn run_verify(
     root: &Path,
-    config: Option<&Path>,
+    cfg: &HashSealConfig,
     ledger: Option<&Path>,
     bundle: Option<&Path>,
     no_fail: bool,
+    require_signature: bool,
+    digest_only: bool,
+    signing: &SigningOptions,
     format: OutputFormat,
 ) -> Result<ExitCode, Box<dyn std::error::Error>> {
-    let cfg = load_config(root, config, None)?;
     let bp = BundlePaths::under(root);
     let bundle_dir = if let Some(b) = bundle {
         Some(b.to_path_buf())
@@ -502,7 +730,8 @@ fn run_verify(
         line_endings_lf_text: cfg.tree.line_endings == "lf-text",
     };
     let result = if let Some(b) = &bundle_dir {
-        verify_bundle(root, b, &opts)?
+        let s_opt = if digest_only { None } else { Some(signing) };
+        verify_bundle_with_signing(root, b, &opts, s_opt, require_signature && !digest_only)?
     } else {
         verify_tree(root, &led, &opts)?
     };
@@ -562,6 +791,7 @@ fn run_verify(
     Ok(ExitCode::from(exit as u8))
 }
 
+#[allow(clippy::too_many_arguments)]
 fn run_check(
     root: &Path,
     paths: &[PathBuf],
@@ -569,25 +799,56 @@ fn run_check(
     format: OutputFormat,
     no_fail: bool,
     require_signature: bool,
+    digest_only: bool,
+    lock_override: Option<&Path>,
+    no_lock: bool,
+    diff_base: Option<&str>,
+    signing: &SigningOptions,
     unicode_policy: UnicodePolicy,
 ) -> Result<ExitCode, Box<dyn std::error::Error>> {
-    let opts = CheckOpts {
-        instruct: InstructOptions {
-            field: cfg.document.field.clone(),
-            algorithm: cfg.document_algorithm()?,
-            canonical: cfg.document_canonical(),
-            auto_frontmatter: cfg.document.auto_frontmatter,
-            unicode_policy,
-        },
-        require_signature,
-        verify_signature: true,
-        gpg: gpg_from(cfg, None),
+    let instruct_opts = InstructOptions {
+        field: cfg.document.field.clone(),
+        algorithm: cfg.document_algorithm()?,
+        canonical: cfg.document_canonical(),
+        auto_frontmatter: cfg.document.auto_frontmatter,
+        unicode_policy,
     };
-    let files = collect_md_files(root, paths, &cfg.document.include, &cfg.document.exclude)?;
+
+    let files = if let Some(base) = diff_base {
+        collect_diff_md_files(root, base, &cfg.document.include, &cfg.document.exclude)?
+    } else {
+        collect_md_files(root, paths, &cfg.document.include, &cfg.document.exclude)?
+    };
+
     let mut results = Vec::new();
     for path in &files {
+        let opts = CheckOpts {
+            instruct: instruct_opts.clone(),
+            require_signature,
+            digest_only,
+            expected_scope: rel_posix(root, path),
+            signing: signing.clone(),
+        };
         results.push(check_instruct_path_with(path, &opts));
     }
+
+    if !no_lock && diff_base.is_none() && paths.is_empty() {
+        let lock_path = lock_override
+            .map(Path::to_path_buf)
+            .unwrap_or_else(|| root.join(LOCKFILE_NAME));
+        if lock_path.is_file() {
+            let lock_opts = CheckOpts {
+                instruct: instruct_opts,
+                require_signature,
+                digest_only,
+                expected_scope: None,
+                signing: signing.clone(),
+            };
+            let lock_findings = verify_lockfile(root, &lock_path, &files, &lock_opts)?;
+            results.extend(lock_findings);
+        }
+    }
+
     let batch = BatchCheckResult::from_results(results.clone());
     let exit = if batch.ok || no_fail || cfg.enforce.on_doc_mismatch == "warn" {
         0
@@ -646,6 +907,8 @@ fn print_finding_human(f: &CheckResult) {
         CheckStatus::UntrustedKey => "UNTRUSTED_KEY",
         CheckStatus::UnverifiedSignature => "UNVERIFIED_SIGNATURE",
         CheckStatus::SuspiciousUnicode => "SUSPICIOUS_UNICODE",
+        CheckStatus::LockedFileRemoved => "LOCKED_FILE_REMOVED",
+        CheckStatus::UnapprovedFile => "UNAPPROVED_FILE",
         CheckStatus::Valid => "OK",
     };
     println!("  {status}  {path}");

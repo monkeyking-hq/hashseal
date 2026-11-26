@@ -18,6 +18,8 @@ pub enum CheckStatus {
     UntrustedKey,
     UnverifiedSignature,
     SuspiciousUnicode,
+    LockedFileRemoved,
+    UnapprovedFile,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -164,6 +166,38 @@ impl CheckResult {
             message: Some(message.into()),
         }
     }
+
+    pub fn locked_file_removed(
+        path: Option<PathBuf>,
+        expected: Option<String>,
+        message: impl Into<String>,
+    ) -> Self {
+        Self {
+            ok: false,
+            status: CheckStatus::LockedFileRemoved,
+            algorithm: None,
+            expected,
+            actual: None,
+            path,
+            message: Some(message.into()),
+        }
+    }
+
+    pub fn unapproved_file(
+        path: Option<PathBuf>,
+        actual: Option<String>,
+        message: impl Into<String>,
+    ) -> Self {
+        Self {
+            ok: false,
+            status: CheckStatus::UnapprovedFile,
+            algorithm: None,
+            expected: None,
+            actual,
+            path,
+            message: Some(message.into()),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -188,6 +222,8 @@ pub struct BatchSummary {
     pub untrusted_key: usize,
     pub unverified_signature: usize,
     pub suspicious_unicode: usize,
+    pub locked_file_removed: usize,
+    pub unapproved_file: usize,
 }
 
 impl BatchCheckResult {
@@ -208,6 +244,8 @@ impl BatchCheckResult {
                 CheckStatus::UntrustedKey => summary.untrusted_key += 1,
                 CheckStatus::UnverifiedSignature => summary.unverified_signature += 1,
                 CheckStatus::SuspiciousUnicode => summary.suspicious_unicode += 1,
+                CheckStatus::LockedFileRemoved => summary.locked_file_removed += 1,
+                CheckStatus::UnapprovedFile => summary.unapproved_file += 1,
             }
         }
         let findings: Vec<_> = results.into_iter().filter(|r| !r.ok).collect();

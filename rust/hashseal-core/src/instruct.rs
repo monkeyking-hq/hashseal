@@ -1,12 +1,12 @@
 //! Instruct-file seals (`instruct-v2`: Markdown front matter + lossless raw-FM hash).
 //!
-//! Optional GPG signature field `hashseal_sig` after `hashseal` (git-aligned).
+//! Supports `signing-v2` (OpenSSH `SSHSIG` and hardened GPG) with context scope binding.
 //! Signed, Sealed, Delivered - I'm Yours.
 
 use crate::digest::{Algorithm, Digest};
 use crate::error::{Error, Result};
-use crate::gpg::{self, GpgConfig, GpgVerifyStatus};
 use crate::result::CheckResult;
+use crate::signing::{self, SignFormat, SigningOptions, VerifyOutcome};
 use crate::unicode::{format_unicode_findings, scan_suspicious_unicode, UnicodePolicy};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -63,24 +63,28 @@ impl Default for InstructOptions {
     }
 }
 
-/// Seal options including optional GPG signing.
+/// Seal options including optional `signing-v2` cryptographic signature.
 #[derive(Debug, Clone, Default)]
 pub struct SealOpts {
     pub instruct: InstructOptions,
-    /// When set, write `hashseal_sig` with GPG detached armor over the digest payload.
+    /// When set, write `hashseal_sig*` with detached signature over `HASHSEAL-SIG-V2`.
     pub sign: bool,
-    pub gpg: GpgConfig,
+    pub signing: SigningOptions,
+    /// Context scope bound into signature (`<rel-path>` or `"*"` for `--portable`).
+    pub scope: Option<String>,
 }
 
-/// Check options including signature policy.
+/// Check options including `signing-v2` verification policy.
 #[derive(Debug, Clone, Default)]
 pub struct CheckOpts {
     pub instruct: InstructOptions,
     /// If true, missing `hashseal_sig` fails.
     pub require_signature: bool,
-    /// If true (default when require_signature or sig present), run gpg --verify.
-    pub verify_signature: bool,
-    pub gpg: GpgConfig,
+    /// If true, skip signature verification even when `hashseal_sig` is present.
+    pub digest_only: bool,
+    /// Expected repo-relative POSIX path for scope-bound signature verification.
+    pub expected_scope: Option<String>,
+    pub signing: SigningOptions,
 }
 
 #[derive(Debug, Clone)]
@@ -150,6 +154,15 @@ fn parse_document(text: &str) -> ParsedDoc {
         had_front_matter: false,
         body_raw: text.to_string(),
     }
+}
+
+#[cfg(feature = "json")]
+pub(crate) fn extract_fm_field(text: &str, field: &str) -> Option<String> {
+    let doc = parse_document(text);
+    if !doc.had_front_matter {
+        return None;
+    }
+    extract_reserved_field(&doc.fm_lines, field)
 }
 
 fn extract_reserved_field(lines: &[String], field: &str) -> Option<String> {
@@ -256,22 +269,39 @@ fn compute_digest(doc: &ParsedDoc, opts: &InstructOptions) -> Digest {
     Digest::compute(opts.algorithm, &payload)
 }
 
-/// Write seal (+ optional sig) into front matter; returns full file text.
+/// Compute the `instruct-v2` digest of raw document text (without modifying it).
+pub fn digest_instruct_bytes(text: &str, opts: &InstructOptions) -> Digest {
+    let doc = parse_document(text);
+    compute_digest(&doc, opts)
+}
+
+struct RenderedSig<'a> {
+    armor: &'a str,
+    format: SignFormat,
+    scope: &'a str,
+    signer: Option<&'a str>,
+}
+
+/// Write seal (+ optional sig metadata) into front matter; returns full file text.
 fn render_with_seal(
     doc: &ParsedDoc,
     opts: &InstructOptions,
     digest: &Digest,
-    sig_armor: Option<&str>,
+    sig: Option<RenderedSig<'_>>,
 ) -> String {
     let mut fm_lines = strip_reserved_fm_lines(&doc.fm_lines, &opts.field);
     if fm_lines.iter().all(|l| l.trim().is_empty()) {
         fm_lines.clear();
     }
-    // Ensure seal then sig at end of FM (after other keys)
     fm_lines.push(format!("{}: \"{}\"", opts.field, digest.qualified()));
-    if let Some(armor) = sig_armor {
+    if let Some(s) = sig {
+        fm_lines.push(format!("{SIG_FORMAT_FIELD}: {}", s.format.as_str()));
+        fm_lines.push(format!("{SCOPE_FIELD}: \"{}\"", s.scope));
+        if let Some(signer) = s.signer {
+            fm_lines.push(format!("{SIGNER_FIELD}: \"{signer}\""));
+        }
         fm_lines.push(format!("{SIG_FIELD}: |"));
-        for line in armor.trim().lines() {
+        for line in s.armor.trim().lines() {
             fm_lines.push(format!("  {line}"));
         }
     }
@@ -295,12 +325,13 @@ pub fn seal_instruct_bytes(text: &str, opts: &InstructOptions) -> Result<(String
         &SealOpts {
             instruct: opts.clone(),
             sign: false,
-            gpg: GpgConfig::default(),
+            signing: SigningOptions::default(),
+            scope: None,
         },
     )
 }
 
-/// Seal with optional GPG signature (git-aligned).
+/// Seal with optional `signing-v2` signature.
 pub fn seal_instruct_bytes_with(text: &str, opts: &SealOpts) -> Result<(String, Digest)> {
     if opts.instruct.unicode_policy == UnicodePolicy::Fail {
         let u = scan_suspicious_unicode(text);
@@ -316,15 +347,23 @@ pub fn seal_instruct_bytes_with(text: &str, opts: &SealOpts) -> Result<(String, 
         doc.had_front_matter = true;
         doc.fm_lines = Vec::new();
     }
-    // Strip old seal/sig before hashing so re-seal is stable
     doc.fm_lines = strip_reserved_fm_lines(&doc.fm_lines, &opts.instruct.field);
     let digest = compute_digest(&doc, &opts.instruct);
-    let sig = if opts.sign {
-        Some(gpg::sign_digest(&digest.qualified(), &opts.gpg)?)
+    let sig_bundle = if opts.sign {
+        let scope = opts.scope.clone().unwrap_or_else(|| "*".into());
+        let (armor, fmt) =
+            signing::sign_instruct_digest(&digest.qualified(), &scope, &opts.signing)?;
+        Some((armor, fmt, scope))
     } else {
         None
     };
-    let sealed = render_with_seal(&doc, &opts.instruct, &digest, sig.as_deref());
+    let rendered_sig = sig_bundle.as_ref().map(|(armor, fmt, scope)| RenderedSig {
+        armor: armor.as_str(),
+        format: *fmt,
+        scope: scope.as_str(),
+        signer: None,
+    });
+    let sealed = render_with_seal(&doc, &opts.instruct, &digest, rendered_sig);
     Ok((sealed, digest))
 }
 
@@ -335,7 +374,8 @@ pub fn seal_instruct_path(path: &Path, opts: &InstructOptions) -> Result<Digest>
         &SealOpts {
             instruct: opts.clone(),
             sign: false,
-            gpg: GpgConfig::default(),
+            signing: SigningOptions::default(),
+            scope: None,
         },
     )
 }
@@ -354,14 +394,15 @@ pub fn check_instruct_bytes(text: &str, opts: &InstructOptions) -> CheckResult {
         &CheckOpts {
             instruct: opts.clone(),
             require_signature: false,
-            verify_signature: false,
-            gpg: GpgConfig::default(),
+            digest_only: true,
+            expected_scope: None,
+            signing: SigningOptions::default(),
         },
         None,
     )
 }
 
-/// Check with signature policy.
+/// Check with `signing-v2` policy and fail-closed signature verification.
 pub fn check_instruct_bytes_with(
     text: &str,
     opts: &CheckOpts,
@@ -393,32 +434,44 @@ pub fn check_instruct_bytes_with(
             }
 
             let sig = extract_reserved_field(&doc.fm_lines, SIG_FIELD);
-            let want_sig = opts.require_signature || (opts.verify_signature && sig.is_some());
             if opts.require_signature && sig.is_none() {
                 return CheckResult::missing_signature(path, &actual);
             }
-            if want_sig {
-                if let Some(armor) = sig {
-                    match gpg::verify_digest(&actual.qualified(), &armor, &opts.gpg) {
-                        GpgVerifyStatus::Good => CheckResult::valid(path, &actual),
-                        GpgVerifyStatus::Bad => {
-                            CheckResult::bad_signature(path, &actual, "gpg --verify failed")
-                        }
-                        GpgVerifyStatus::Unavailable(msg) => {
-                            if opts.require_signature {
-                                CheckResult::bad_signature(
-                                    path,
-                                    &actual,
-                                    format!("gpg unavailable: {msg}"),
-                                )
-                            } else {
-                                // Digest ok; cannot confirm sig
-                                CheckResult::valid(path, &actual)
-                            }
-                        }
+
+            if let Some(armor) = sig {
+                if opts.digest_only {
+                    return CheckResult::valid(path, &actual);
+                }
+                let declared_scope = extract_reserved_field(&doc.fm_lines, SCOPE_FIELD);
+                let verify_scope = match (&declared_scope, &opts.expected_scope) {
+                    (Some(s), Some(exp)) if s != "*" && s != exp => {
+                        return CheckResult::bad_signature(
+                            path,
+                            &actual,
+                            format!(
+                                "signature scope mismatch: signed for '{s}', checked at '{exp}'"
+                            ),
+                        );
                     }
-                } else {
-                    CheckResult::valid(path, &actual)
+                    (Some(s), _) => s.as_str(),
+                    (None, Some(exp)) => exp.as_str(),
+                    (None, None) => "*",
+                };
+
+                match signing::verify_instruct_digest(
+                    &actual.qualified(),
+                    verify_scope,
+                    &armor,
+                    &opts.signing,
+                ) {
+                    VerifyOutcome::Good { .. } => CheckResult::valid(path, &actual),
+                    VerifyOutcome::Bad(msg) => CheckResult::bad_signature(path, &actual, msg),
+                    VerifyOutcome::UntrustedKey(msg) => {
+                        CheckResult::untrusted_key(path, &actual, msg)
+                    }
+                    VerifyOutcome::Unavailable(msg) => {
+                        CheckResult::unverified_signature(path, &actual, msg)
+                    }
                 }
             } else {
                 CheckResult::valid(path, &actual)
@@ -435,8 +488,9 @@ pub fn check_instruct_path(path: &Path, opts: &InstructOptions) -> CheckResult {
             &CheckOpts {
                 instruct: opts.clone(),
                 require_signature: false,
-                verify_signature: false,
-                gpg: GpgConfig::default(),
+                digest_only: true,
+                expected_scope: None,
+                signing: SigningOptions::default(),
             },
             Some(path.to_path_buf()),
         ),
@@ -491,6 +545,8 @@ mod tests {
             CheckStatus::UntrustedKey => "untrusted_key",
             CheckStatus::UnverifiedSignature => "unverified_signature",
             CheckStatus::SuspiciousUnicode => "suspicious_unicode",
+            CheckStatus::LockedFileRemoved => "locked_file_removed",
+            CheckStatus::UnapprovedFile => "unapproved_file",
         }
     }
 
@@ -773,12 +829,122 @@ mod tests {
             &CheckOpts {
                 instruct: opts,
                 require_signature: true,
-                verify_signature: true,
-                gpg: GpgConfig::default(),
+                digest_only: false,
+                expected_scope: None,
+                signing: SigningOptions::default(),
             },
             None,
         );
         assert!(!r.ok);
         assert_eq!(r.status, CheckStatus::MissingSignature);
+    }
+
+    #[test]
+    fn ssh_signed_instruct_scope_and_fail_closed() {
+        let has_ssh = std::process::Command::new("ssh-keygen")
+            .arg("--version")
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .is_ok();
+        if !has_ssh {
+            return;
+        }
+        let dir = tempdir().unwrap();
+        let key = dir.path().join("id_ed25519");
+        let st = std::process::Command::new("ssh-keygen")
+            .args([
+                "-q",
+                "-t",
+                "ed25519",
+                "-N",
+                "",
+                "-C",
+                "dev@hashseal.test",
+                "-f",
+            ])
+            .arg(&key)
+            .status()
+            .unwrap();
+        assert!(st.success());
+        let pub_s = fs::read_to_string(dir.path().join("id_ed25519.pub")).unwrap();
+        let allowed = dir.path().join("allowed_signers");
+        fs::write(&allowed, format!("dev@hashseal.test {}\n", pub_s.trim())).unwrap();
+
+        let signing = SigningOptions {
+            format: SignFormat::Ssh,
+            signing_key: Some(key.display().to_string()),
+            allowed_signers: Some(allowed),
+            ..Default::default()
+        };
+
+        let (sealed, _) = seal_instruct_bytes_with(
+            "# Rules\n",
+            &SealOpts {
+                instruct: InstructOptions::default(),
+                sign: true,
+                signing: signing.clone(),
+                scope: Some("AGENTS.md".into()),
+            },
+        )
+        .unwrap();
+
+        // Matching scope passes
+        let ok = check_instruct_bytes_with(
+            &sealed,
+            &CheckOpts {
+                instruct: InstructOptions::default(),
+                require_signature: true,
+                digest_only: false,
+                expected_scope: Some("AGENTS.md".into()),
+                signing: signing.clone(),
+            },
+            None,
+        );
+        assert!(ok.ok, "{ok:?}");
+
+        // Replay at different path fails scope binding
+        let replay = check_instruct_bytes_with(
+            &sealed,
+            &CheckOpts {
+                instruct: InstructOptions::default(),
+                require_signature: true,
+                digest_only: false,
+                expected_scope: Some("CLAUDE.md".into()),
+                signing,
+            },
+            None,
+        );
+        assert!(!replay.ok);
+        assert_eq!(replay.status, CheckStatus::BadSignature);
+
+        // Fail closed when allowed_signers missing
+        let unverified = check_instruct_bytes_with(
+            &sealed,
+            &CheckOpts {
+                instruct: InstructOptions::default(),
+                require_signature: false,
+                digest_only: false,
+                expected_scope: Some("AGENTS.md".into()),
+                signing: SigningOptions::default(),
+            },
+            None,
+        );
+        assert!(!unverified.ok);
+        assert_eq!(unverified.status, CheckStatus::UnverifiedSignature);
+
+        // digest_only opts out
+        let dig_ok = check_instruct_bytes_with(
+            &sealed,
+            &CheckOpts {
+                instruct: InstructOptions::default(),
+                require_signature: false,
+                digest_only: true,
+                expected_scope: Some("AGENTS.md".into()),
+                signing: SigningOptions::default(),
+            },
+            None,
+        );
+        assert!(dig_ok.ok, "{dig_ok:?}");
     }
 }

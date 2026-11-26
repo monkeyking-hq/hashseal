@@ -53,6 +53,8 @@ pub struct ReportCounts {
     pub bad_signature: usize,
     pub unverified_signature: usize,
     pub suspicious_unicode: usize,
+    pub locked_file_removed: usize,
+    pub unapproved_file: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -162,6 +164,8 @@ impl ReportBuilder {
                 bad_signature: batch.summary.bad_signature,
                 unverified_signature: batch.summary.unverified_signature,
                 suspicious_unicode: batch.summary.suspicious_unicode,
+                locked_file_removed: batch.summary.locked_file_removed,
+                unapproved_file: batch.summary.unapproved_file,
                 ..Default::default()
             },
             #[cfg(feature = "json")]
