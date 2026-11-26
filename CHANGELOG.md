@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.6.0] - 2026-11-26
+
+### Added
+- `scripts/install.sh` and `scripts/install.ps1` installers with `SHA256SUMS` verification and `--from-source` fallback.
+- `SHA256SUMS` generation and binary smoke-testing in `.gitea/workflows/release-binaries.yml` and `scripts/build-release.sh`.
+
+### Changed
+- Re-scoped `README.md`, `AGENTS.md`, `docs/`, `verify/vectors/README.md`, and `config/examples/hashseal.mvp.json` around AI agent instruction & skill pack integrity (`instruct-v2`, `signing-v2`, `.hashseal.lock`, `hashseal init`, Unicode smuggling checks, Tier-1 Rust/JS/Python/Go SDKs + WASM).
+- Removed stale references to pruned Java/Ruby/.NET/Python-plugin surfaces and non-existent `.github/workflows/` paths.
+
 ## [0.5.0] - 2026-11-26
 
 ### Added

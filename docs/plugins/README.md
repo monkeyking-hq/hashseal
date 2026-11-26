@@ -1,71 +1,19 @@
 ---
-hashseal: "blake3:ae6be4e54ef0f07949cc8f213ea86e0331243e07ca8a4f1013122c2c9b6c80f8"
+hashseal: "blake3:c72c15371232f80c5e84d18a95944d2848e6af5a8437f50d7a87a0f981196a66"
 ---
-# HashSeal build plugins
+# HashSeal CLI wrappers &amp; integrations
 
-Thin adapters that shell to the **`hashseal` CLI**. Plugins do **not** re-implement seal/check algorithms.
+Thin wrappers invoke the **`hashseal` CLI** (`PATH` or `HASHSEAL_BIN`); all integrity logic lives in `hashseal-core`.
 
-Part of the **[Build tools](../build/)** product line (tree / release / CI). For instruction files, see **[Agent instruction file integrity seal](../instruct/)**.
+| Integration | Path | Role |
+|---|---|---|
+| Git / Claude hooks | `hashseal init` | Bootstraps `.githooks/pre-commit`, `.claude/settings.json`, `.hashseal.lock` |
+| pre-commit framework | [`.pre-commit-hooks.yaml`](../../.pre-commit-hooks.yaml) | `hashseal-check` and `hashseal-check-signed` hooks |
+| Gitea / GitHub Action | [`action/action.yml`](../../action/action.yml) | Composite PR/CI check (`diff-base`, `require-signature`, `lock`) |
+| npm wrapper | [`plugins/npm`](../../plugins/npm) | `hashseal-npm` CLI wrapper |
+| Cargo aliases | [`plugins/cargo`](../../plugins/cargo) | Cargo alias config + docs |
 
-**Signed, Sealed, Delivered - I'm Yours.**
-
-## PATH / binary requirement
-
-| Variable | Purpose |
-|----------|---------|
-| `PATH` | Must include `hashseal` (or `hashseal.exe` on Windows) |
-| `HASHSEAL_BIN` | Optional absolute path override |
-
-Build from monorepo:
-
-```bash
-cargo build -p hashseal --release
-# target/release/hashseal[.exe]
-```
-
-Tiny verify-only binary (no clap/serde):
-
-```bash
-cargo build -p hashseal-check --release
-```
-
-Install story: [`docs/install.md`](../install.md).
-
-## Matrix
-
-| Plugin | Path | Status |
-|--------|------|--------|
-| npm | [`plugins/npm`](../../plugins/npm) | Skeleton — `hashseal-npm` + JS API |
-| Maven | [`plugins/maven`](../../plugins/maven) | Skeleton — `seal` / `check` / `verify` goals; Central via [`java/`](../../java/) (`-Pcentral`, server `hashseal-central`) |
-| Gradle | [`plugins/gradle`](../../plugins/gradle) | Skeleton — `hashsealSeal` / `Check` / `Verify` (includeBuild) |
-| Cargo | [`plugins/cargo`](../../plugins/cargo) | Aliases + docs (no separate crate) |
-| Python | [`plugins/python`](../../plugins/python) | Reserved / empty |
-| Go | [`plugins/go`](../../plugins/go) | Reserved / empty |
-
-## Zero-dep verify SDKs (not plugins)
-
-For in-process digest check **without** the CLI:
-
-| Lang | Path | Runner |
-|------|------|--------|
-| JS | `verify/js` | `node test/vectors.test.js` |
-| Python | `verify/python` | `python test/test_vectors.py` |
-| Java | `verify/java` | `javac` + `RunVectors` |
-| Go | `verify/go` | `go test .` / `go run ./test/` |
-| Ruby | `verify/ruby` | `ruby test/run_vectors.rb` (pure blake3) |
-| .NET | `verify/dotnet` | `dotnet run --project Hashseal.Verify.Test` (pure blake3) |
-
-Vectors: `verify/vectors/instruct-v1.json` (FULL canonical mode).
-
-IDE: [`extensions/vscode`](../../extensions/vscode) (PATH / `HASHSEAL_BIN` / `HASHSEAL_CHECK_BIN`).
-
-## Packaging notes
-
-See **[docs/install.md](../install.md)**, **[docs/packaging.md](../packaging.md)**, and `.github/workflows/release-binaries.yml`.
-
-- Agent builds **do not** publish to npm, Maven Central, or Plugin Portal unless explicitly requested.
-- Prefer shipping platform binaries via GitHub Releases; plugins only resolve PATH/`HASHSEAL_BIN`.
-- `hashseal-check` dependency tree must stay core → blake3 only.
+For in-process verification without the CLI, use the Tier-1 SDKs under `verify/js`, `verify/python`, or `verify/go`.
 
 ```text
 Copyright (c) 2026 MonkeyKing.dev

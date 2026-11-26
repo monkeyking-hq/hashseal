@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:e57c884abb4b2e9c931efa9625e13ab7f55527334c61da08789a397add1ec94d"
+hashseal: "blake3:45d0eb9d1543a96592d2e3adfdb78a2623a86eab96e6e65f65e0b92a3f2f39b9"
 ---
 # Official HashSeal test vectors
 
@@ -10,6 +10,7 @@ Generated from `hashseal-core` and required for every verify implementation (CLI
 | File | Spec | Notes |
 |------|------|--------|
 | [`instruct-v2.json`](./instruct-v2.json) | instruct-v2 | FULL canonical mode (lossless raw-FM), blake3, field `hashseal` (**19** cases) |
+| [`signing-v2.json`](./signing-v2.json) | signing-v2 | `HASHSEAL-SIG-V2` OpenSSH `SSHSIG` scope binding &amp; trust (**5** cases) |
 | [`tree-v1.json`](./tree-v1.json) | tree-v1 | Tree file hash + verify findings (**12** cases) |
 
 ## `instruct-v2.json`
@@ -44,20 +45,15 @@ Beyond simple body / FM / tamper / CRLF:
 
 `hashseal-core` loads this file in unit tests (`instruct::tests::official_vectors_instruct_v2`). Digests must not change without a deliberate vector version bump.
 
-### Language SDKs
+### Language SDKs (Tier-1)
 
 ```text
-verify/js/     — zero npm deps; checkDocumentText(text)
-verify/python/ — stdlib + vendor blake3
-verify/java/   — pure Java
-verify/go/     — pure Go
-verify/ruby/   — pure Ruby
-verify/dotnet/ — pure C#
+verify/js/     — zero npm deps; checkDocumentText(text, opts)
+verify/python/ — stdlib only; check_document_text(text, ...)
+verify/go/     — pure Go stdlib; CheckDocumentTextWith(text, opts)
 ```
 
-Each SDK should fail a case by printing case `id` and expected vs actual digests.
-
-All instruct runners must pass **19** cases from `instruct-v2.json`.
+All Tier-1 SDKs pass **19** cases from `instruct-v2.json`, **5** cases from `signing-v2.json`, and **12** cases from `tree-v1.json`.
 
 ---
 

@@ -1,112 +1,47 @@
 ---
-hashseal: "blake3:859ceb323f1ac8bd175c04f09711686d964afb5e7914cc0c22bbd174ac40143d"
+hashseal: "blake3:ff04dafb05194570dbb45dd0ed70dab82597de1824af62940e0f9d95f3c87e22"
 ---
 # Installing HashSeal binaries
 
 **Signed, Sealed, Delivered - I'm Yours.**
 
-Plugins (npm, Maven, Gradle, Cargo wrappers) **shell to** the native CLI. They do not embed binaries. Put `hashseal` / `hashseal-check` on **PATH**, or set **`HASHSEAL_BIN`**.
+## Installer scripts (recommended)
 
-## Binaries
-
-| Binary | Role | Dep policy |
-|--------|------|------------|
-| `hashseal` | Full CLI: seal / check / verify / clean, optional GPG sign | clap + serde_json OK |
-| `hashseal-check` | Tiny verify-focused binary | **blake3 path only** (`hashseal-core/check`) |
-
-On Windows the names are `hashseal.exe` and `hashseal-check.exe`.
-
-## Build from source (all platforms)
-
-Requires a Rust toolchain ([rustup](https://rustup.rs)).
+Download prebuilt release binaries and verify `SHA256SUMS`:
 
 ```bash
-# From monorepo root
-cargo build -p hashseal --release
-cargo build -p hashseal-check --release
+# Linux / macOS
+./scripts/install.sh
+# Or build from source:
+./scripts/install.sh --from-source
 ```
-
-Artifacts:
-
-| OS | Path |
-|----|------|
-| Linux / macOS | `target/release/hashseal`, `target/release/hashseal-check` |
-| Windows | `target\release\hashseal.exe`, `target\release\hashseal-check.exe` |
-
-### Put on PATH
-
-**Unix (bash/zsh):**
-
-```bash
-export PATH="$PWD/target/release:$PATH"
-# or permanent: copy/symlink into ~/bin or /usr/local/bin
-```
-
-**PowerShell:**
 
 ```powershell
-$env:PATH = "$PWD\target\release;$env:PATH"
-# or set HASHSEAL_BIN:
-$env:HASHSEAL_BIN = "$PWD\target\release\hashseal.exe"
+# Windows (PowerShell)
+pwsh scripts/install.ps1
+# Or build from source:
+pwsh scripts/install.ps1 -FromSource
 ```
 
-**cmd.exe:**
-
-```bat
-set PATH=%CD%\target\release;%PATH%
-set HASHSEAL_BIN=%CD%\target\release\hashseal.exe
-```
-
-### cargo install (local path)
+## Build from source with Cargo
 
 ```bash
+cargo build -p hashseal --release
+cargo build -p hashseal-check --release
+# or install into ~/.cargo/bin:
 cargo install --path rust/hashseal --locked
 cargo install --path rust/hashseal-check --locked
-# installs into ~/.cargo/bin (ensure that dir is on PATH)
 ```
 
 ## Environment variables
 
 | Variable | Purpose |
 |----------|---------|
-| `PATH` | Must resolve `hashseal` (or `hashseal.exe`) for plugins and IDE commands |
-| `HASHSEAL_BIN` | Absolute path override for the full CLI (plugins prefer this when set) |
-| `HASHSEAL_CHECK_BIN` | Optional override for the tiny check binary (VS Code extension, scripts) |
+| `PATH` | Must resolve `hashseal` / `hashseal-check` for plugins, hooks, and IDE commands |
+| `HASHSEAL_BIN` | Absolute path override for the full CLI |
+| `HASHSEAL_CHECK_BIN` | Optional override for `hashseal-check` |
 
-## Cross-platform release builds
-
-Local one-off:
-
-```bash
-# Host triple
-cargo build -p hashseal --release
-cargo build -p hashseal-check --release
-
-# Example cross targets (requires appropriate linker / rustup target)
-rustup target add x86_64-unknown-linux-gnu
-rustup target add x86_64-pc-windows-msvc
-rustup target add aarch64-apple-darwin
-cargo build -p hashseal --release --target x86_64-unknown-linux-gnu
-```
-
-CI skeleton: [`.github/workflows/release-binaries.yml`](../.github/workflows/release-binaries.yml) builds multi-target artifacts (no secrets required for build-only).
-
-Future: attach archives to **GitHub Releases** (`hashseal-<version>-<target>.tar.gz` / `.zip`). Plugins continue to resolve **PATH** / **HASHSEAL_BIN** only — they do not download binaries unless you add that later.
-
-## Verify install
-
-```bash
-hashseal --help
-hashseal-check --help
-hashseal check --root fixtures/mvp-demo
-hashseal-check --root fixtures/mvp-demo
-```
-
-## Packaging notes
-
-- Agent / overnight builds **do not** publish crates.io, npm, Maven Central, or Plugin Portal unless explicitly requested.
-- Keep `hashseal-check` dependency tree lean: `cargo tree -p hashseal-check --edges normal` should show core → blake3 only (no clap/serde).
-- See also [`docs/packaging.md`](packaging.md) and [`docs/plugins/README.md`](plugins/README.md).
+CI release workflow: [`.gitea/workflows/release-binaries.yml`](../.gitea/workflows/release-binaries.yml).
 
 ```text
 Copyright (c) 2026 MonkeyKing.dev
