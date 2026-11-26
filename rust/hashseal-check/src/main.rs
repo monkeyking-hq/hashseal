@@ -1,19 +1,27 @@
 //! Tiny HashSeal check — no clap, no walkdir; core `check` feature only.
 //! Copyright (c) 2026 MonkeyKing.dev
 
-use hashseal_core::gpg::GpgConfig;
 use hashseal_core::instruct::{check_instruct_path_with, CheckOpts, InstructOptions};
 use hashseal_core::result::BatchCheckResult;
+use hashseal_core::signing::SigningOptions;
 use hashseal_core::walk::{any_glob_str, walk_files};
 use hashseal_core::{CheckStatus, UnicodePolicy, DEFAULT_DOCUMENT_INCLUDES, VERSION};
 use std::env;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
+
+fn rel_posix(root: &Path, path: &Path) -> Option<String> {
+    path.strip_prefix(root)
+        .ok()
+        .map(|r| r.to_string_lossy().replace('\\', "/"))
+}
 
 fn main() -> ExitCode {
     let mut paths: Vec<PathBuf> = Vec::new();
     let mut no_fail = false;
     let mut require_signature = false;
+    let mut digest_only = false;
+    let mut allowed_signers: Option<PathBuf> = None;
     let mut unicode_policy = UnicodePolicy::Fail;
     let mut root = PathBuf::from(".");
 
@@ -30,6 +38,15 @@ fn main() -> ExitCode {
             }
             "--no-fail" => no_fail = true,
             "--require-signature" => require_signature = true,
+            "--digest-only" => digest_only = true,
+            "--allowed-signers" => {
+                if let Some(p) = args.next() {
+                    allowed_signers = Some(PathBuf::from(p));
+                } else {
+                    eprintln!("hashseal-check: --allowed-signers requires a path");
+                    return ExitCode::from(2);
+                }
+            }
             "--unicode-policy" => {
                 if let Some(p) = args.next() {
                     match p.parse::<UnicodePolicy>() {
@@ -57,15 +74,10 @@ fn main() -> ExitCode {
         }
     }
 
-    let opts = CheckOpts {
-        instruct: InstructOptions {
-            unicode_policy,
-            ..InstructOptions::default()
-        },
-        require_signature,
-        verify_signature: true,
-        gpg: GpgConfig::from_git(),
-    };
+    let mut signing = SigningOptions::from_git_and_root(Some(&root));
+    if let Some(s) = allowed_signers {
+        signing.allowed_signers = Some(s);
+    }
 
     let files = if paths.is_empty() {
         walk_files(&root, |rel| any_glob_str(DEFAULT_DOCUMENT_INCLUDES, rel)).unwrap_or_default()
@@ -78,6 +90,16 @@ fn main() -> ExitCode {
 
     let mut results = Vec::new();
     for p in files {
+        let opts = CheckOpts {
+            instruct: InstructOptions {
+                unicode_policy,
+                ..InstructOptions::default()
+            },
+            require_signature,
+            digest_only,
+            expected_scope: rel_posix(&root, &p),
+            signing: signing.clone(),
+        };
         results.push(check_instruct_path_with(&p, &opts));
     }
     let batch = BatchCheckResult::from_results(results);
@@ -102,6 +124,8 @@ fn main() -> ExitCode {
                 CheckStatus::UntrustedKey => "UNTRUSTED_KEY",
                 CheckStatus::UnverifiedSignature => "UNVERIFIED_SIGNATURE",
                 CheckStatus::SuspiciousUnicode => "SUSPICIOUS_UNICODE",
+                CheckStatus::LockedFileRemoved => "LOCKED_FILE_REMOVED",
+                CheckStatus::UnapprovedFile => "UNAPPROVED_FILE",
                 CheckStatus::Valid => "OK",
             };
             println!("  {status}  {path}");
@@ -129,12 +153,14 @@ fn print_help() {
         "hashseal-check {VERSION} — tiny instruct verify (blake3 + std)\n\n\
          Usage: hashseal-check [OPTIONS] [PATH]...\n\n\
          Options:\n\
-           --root DIR              Root to scan for default instruct globs (default .)\n\
-           --no-fail               Exit 0 even on mismatch\n\
-           --require-signature     Require hashseal_sig (GPG)\n\
-           --unicode-policy MODE   fail (default), warn, or off\n\
-           -h, --help              Help\n\
-           -V, --version           Version\n\n\
+           --root DIR                Root to scan for default instruct globs (default .)\n\
+           --no-fail                 Exit 0 even on mismatch\n\
+           --require-signature       Require hashseal_sig (SSH/GPG)\n\
+           --digest-only             Skip signature verification\n\
+           --allowed-signers PATH    OpenSSH allowed_signers file\n\
+           --unicode-policy MODE     fail (default), warn, or off\n\
+           -h, --help                Help\n\
+           -V, --version             Version\n\n\
          With no PATH args, scans agent instruction files (AGENTS.md, CLAUDE.md,\n\
          Copilot/Cursor/skill dirs, …) — same defaults as hashseal check."
     );

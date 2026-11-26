@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.3.0] - 2026-11-26
+
+### Added
+- `signing-v2` unified signing/verification module (`rust/hashseal-core/src/signing.rs`) supporting OpenSSH `SSHSIG` (`ssh-keygen -Y` + `.hashseal/allowed_signers`) and hardened GPG (`--status-fd 1`, isolated `.hashseal/keys/` keyring, `allowed_key_ids` enforcement, RAII `0o700` temp dirs).
+- Context `scope` binding (`HASHSEAL-SIG-V2`, `hashseal_scope`, `--portable` for `scope=*`) to prevent cross-file signature replay.
+- Fail-closed signature verification (`CheckStatus::UnverifiedSignature`, opt-out via `--digest-only`).
+- Signed instruction lockfile `.hashseal.lock` (`rust/hashseal-core/src/lockfile.rs`, `seal --lock`, `check --lock` / `--no-lock`, detecting `LOCKED_FILE_REMOVED` and `UNAPPROVED_FILE`).
+- Signed `hashseal-bundle/MANIFEST.json.sig` support (`sign_bundle`, `verify_bundle_with_signing`).
+- PR diff gate `hashseal check --diff <base-ref>`.
+
 ## [0.2.0] - 2026-11-26
 
 ### Added

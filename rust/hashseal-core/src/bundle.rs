@@ -10,6 +10,8 @@ use std::path::{Path, PathBuf};
 #[cfg(feature = "json")]
 use crate::error::Error;
 #[cfg(feature = "json")]
+use crate::signing::{self, SigningOptions, VerifyOutcome};
+#[cfg(feature = "json")]
 use crate::timeutil::utc_now_rfc3339;
 #[cfg(feature = "json")]
 use crate::tree::{
@@ -114,17 +116,72 @@ pub fn read_manifest(path: &Path) -> Result<BundleManifest> {
 }
 
 #[cfg(feature = "json")]
+pub fn sign_bundle(bundle_dir: &Path, opts: &SigningOptions) -> Result<PathBuf> {
+    let manifest_path = bundle_dir.join("MANIFEST.json");
+    let bytes = fs::read(&manifest_path)?;
+    let (armor, _) = signing::sign_bytes(&bytes, opts)?;
+    let sig_path = bundle_dir.join("MANIFEST.json.sig");
+    let mut out = armor;
+    if !out.ends_with('\n') {
+        out.push('\n');
+    }
+    fs::write(&sig_path, out)?;
+    Ok(sig_path)
+}
+
+#[cfg(feature = "json")]
 pub fn verify_bundle(
     root: &Path,
     bundle_dir: &Path,
     opts: &TreeSealOptions,
 ) -> Result<TreeVerifyResult> {
+    verify_bundle_with_signing(root, bundle_dir, opts, None, false)
+}
+
+#[cfg(feature = "json")]
+pub fn verify_bundle_with_signing(
+    root: &Path,
+    bundle_dir: &Path,
+    opts: &TreeSealOptions,
+    signing_opts: Option<&SigningOptions>,
+    require_signature: bool,
+) -> Result<TreeVerifyResult> {
     let ledger_path = bundle_dir.join("ledger.json");
     let ledger = read_ledger(&ledger_path)?;
     let mut tree_res = verify_tree(root, &ledger, opts)?;
     let manifest_path = bundle_dir.join("MANIFEST.json");
+    let sig_path = bundle_dir.join("MANIFEST.json.sig");
 
     if manifest_path.is_file() {
+        if let Some(sopts) = signing_opts.filter(|_| sig_path.is_file() || require_signature) {
+            tree_res.checked += 1;
+            let manifest_bytes = fs::read(&manifest_path)?;
+            let (m_dig, _) =
+                Digest::compute_reader(opts.algorithm, std::io::Cursor::new(&manifest_bytes))?;
+            if !sig_path.is_file() {
+                tree_res.findings.push(TreeFinding {
+                    path: format!("{BUNDLE_DIR_NAME}/MANIFEST.json.sig"),
+                    status: TreeEntryStatus::Removed,
+                    expected: Some(m_dig.qualified()),
+                    actual: None,
+                });
+            } else {
+                let armor = fs::read_to_string(&sig_path)?;
+                match signing::verify_bytes(&manifest_bytes, &armor, sopts) {
+                    VerifyOutcome::Good { .. } => {}
+                    VerifyOutcome::Bad(msg)
+                    | VerifyOutcome::UntrustedKey(msg)
+                    | VerifyOutcome::Unavailable(msg) => {
+                        tree_res.findings.push(TreeFinding {
+                            path: format!("{BUNDLE_DIR_NAME}/MANIFEST.json"),
+                            status: TreeEntryStatus::Mismatch,
+                            expected: Some("valid signature".into()),
+                            actual: Some(msg),
+                        });
+                    }
+                }
+            }
+        }
         let manifest = read_manifest(&manifest_path)?;
         if let Some(exp_ledger) = &manifest.ledger_digest {
             tree_res.checked += 1;
