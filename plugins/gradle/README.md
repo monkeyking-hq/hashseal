@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:96d45ca14a2e7fddbd714df04226129ea563a5eae5163610ce13135fd0954980"
+hashseal: "blake3:7bbf1b807edbc3579b6b2c54234048b61500e742f9a7e29209d426a276fbdb94"
 ---
 # hashseal-gradle-plugin
 

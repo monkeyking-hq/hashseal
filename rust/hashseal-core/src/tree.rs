@@ -4,7 +4,7 @@ use crate::digest::{Algorithm, Digest};
 use crate::error::{Error, Result};
 use crate::instruct::normalize_lf;
 use crate::timeutil::utc_now_rfc3339;
-use crate::walk::{any_glob, walk_files};
+use crate::walk::{any_glob, walk_entries, walk_files};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -117,16 +117,17 @@ fn rel_posix(root: &Path, path: &Path) -> Result<String> {
 }
 
 fn hash_file(path: &Path, algorithm: Algorithm, lf_text: bool) -> Result<(Digest, u64)> {
-    let bytes = fs::read(path)?;
-    let size = bytes.len() as u64;
-    let data = if lf_text && is_text_ext(path) {
+    if lf_text && is_text_ext(path) {
+        let bytes = fs::read(path)?;
+        let size = bytes.len() as u64;
         let s = String::from_utf8_lossy(&bytes);
         let s = s.strip_prefix('\u{feff}').unwrap_or(&s);
-        normalize_lf(s).into_bytes()
+        let data = normalize_lf(s).into_bytes();
+        Ok((Digest::compute(algorithm, &data), size))
     } else {
-        bytes
-    };
-    Ok((Digest::compute(algorithm, &data), size))
+        let file = fs::File::open(path)?;
+        Ok(Digest::compute_reader(algorithm, file)?)
+    }
 }
 
 fn path_excluded(rel: &str, exclude: &[String]) -> bool {
@@ -202,11 +203,26 @@ pub fn verify_tree(
     let mut opts = opts.clone();
     opts.algorithm = algorithm;
 
-    let current_files = collect_tree_files(root, &opts)?;
+    let include = opts.include.clone();
+    let exclude = opts.exclude.clone();
+    let entries = walk_entries(root, |rel| {
+        if path_excluded(rel, &exclude) {
+            return false;
+        }
+        any_glob(&include, rel)
+    })?;
     let mut current_map = std::collections::BTreeMap::new();
-    for path in current_files {
-        let rel = rel_posix(root, &path)?;
-        match hash_file(&path, opts.algorithm, opts.line_endings_lf_text) {
+    let mut broken_symlinks = std::collections::BTreeSet::new();
+    for entry in entries {
+        let rel = rel_posix(root, &entry.path)?;
+        if entry.broken_symlink {
+            broken_symlinks.insert(rel);
+            continue;
+        }
+        if entry.is_symlink {
+            continue;
+        }
+        match hash_file(&entry.path, opts.algorithm, opts.line_endings_lf_text) {
             Ok((d, _)) => {
                 current_map.insert(rel, d.qualified());
             }
@@ -221,6 +237,15 @@ pub fn verify_tree(
 
     for e in &ledger.entries {
         expected_paths.insert(e.path.clone());
+        if broken_symlinks.contains(&e.path) {
+            findings.push(TreeFinding {
+                path: e.path.clone(),
+                status: TreeEntryStatus::BrokenSymlink,
+                expected: Some(e.digest.clone()),
+                actual: None,
+            });
+            continue;
+        }
         match current_map.get(&e.path) {
             None => findings.push(TreeFinding {
                 path: e.path.clone(),
@@ -241,6 +266,17 @@ pub fn verify_tree(
                 });
             }
             Some(_) => {}
+        }
+    }
+
+    for path in &broken_symlinks {
+        if !expected_paths.contains(path) {
+            findings.push(TreeFinding {
+                path: path.clone(),
+                status: TreeEntryStatus::BrokenSymlink,
+                expected: None,
+                actual: None,
+            });
         }
     }
 
@@ -313,6 +349,26 @@ mod tests {
         fs::write(d.path().join("a.txt"), "hello\nworld\n").unwrap();
         let v = verify_tree(d.path(), &ledger, &opts).unwrap();
         assert!(v.ok, "{:?}", v.findings);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn broken_symlink_reported_in_verify_tree() {
+        let d = tempdir().unwrap();
+        fs::write(d.path().join("a.txt"), "ok\n").unwrap();
+        let opts = TreeSealOptions::default();
+        let ledger = seal_tree(d.path(), &opts).unwrap();
+        std::os::unix::fs::symlink(
+            d.path().join("does-not-exist"),
+            d.path().join("dangling.txt"),
+        )
+        .unwrap();
+        let v = verify_tree(d.path(), &ledger, &opts).unwrap();
+        assert!(!v.ok);
+        assert!(v
+            .findings
+            .iter()
+            .any(|f| f.path == "dangling.txt" && f.status == TreeEntryStatus::BrokenSymlink));
     }
 
     fn status_name(s: TreeEntryStatus) -> &'static str {

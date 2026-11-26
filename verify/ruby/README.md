@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:492d0958259e58fa3104adda26e54a52683eb9570b3e60ae1cf23b21214f8ce9"
+hashseal: "blake3:b7adbffef7428d02828fcfdcbf66d456c02cb41e5a30b1004907fe246ff6c6af"
 ---
 # hashseal-verify (Ruby)
 

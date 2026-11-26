@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:ee372663d680dc333020212f645aa26aeb112e570b60615dd7c62bb394326cf4"
+hashseal: "blake3:475c499f3d367ba174d6028b43a7425cc91f04ef09a30a7c72266fa23643c5a1"
 ---
 # hashseal Python packaging plugin (reserved)
 

@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.2.0] - 2026-11-26
+
+### Added
+- `instruct-v2` canonicalization with lossless raw front-matter framing (`HASHSEAL-INSTRUCT-V2` domain separation), protecting YAML lists and nested maps verbatim while excluding reserved seal/signature metadata.
+- Built-in suspicious Unicode smuggling detector (`rust/hashseal-core/src/unicode.rs`) flagging Unicode Tag, BiDi control, zero-width, and embedded BOM characters (`SUSPICIOUS_UNICODE`, `--unicode-policy fail|warn|off`).
+- `CheckStatus::UnverifiedSignature` and `CheckStatus::SuspiciousUnicode` in core results, reports, and CLI output.
+- Streaming file hashing (`Digest::compute_reader` with streaming `Sha256Hasher` and `blake3::Hasher`) for binary files and artifacts.
+- `BundleManifest` `ledger_digest` / `report_digest` and `verify_bundle` verification of `MANIFEST.json`, `ledger.json`, and `--artifact` digests.
+- `WalkEntry` / `walk_entries` symlink awareness in `verify_tree` (`TreeEntryStatus::BrokenSymlink`) and deterministic segment-based `glob_match`.
+- Frozen `verify/vectors/instruct-v2.json` (19 cases).
+
+### Changed
+- `HashSealConfig::apply_json` now parses all documented `signing`, `enforce`, `document`, `tree`, and `report` fields.
+- Fixed `is_reserved_fm_key` to respect custom `document.field`, fixed `parse_document` offset handling for embedded `---` lines in front matter, and fixed `extract_reserved_field` indentation check.
+- `hashseal verify` now invokes `verify_bundle` when `--bundle` is passed or `hashseal-bundle/MANIFEST.json` is present.
+
+### Removed
+- `verify/vectors/instruct-v1.json` (replaced by `instruct-v2.json`).
+
 ## 2026-11-20
 
 ### Changed

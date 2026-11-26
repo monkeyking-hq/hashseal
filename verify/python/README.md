@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:9ac7978d565ef0b3ff7f9b669bcd616d93c3227afc7c80c2d7e458f9811604af"
+hashseal: "blake3:7db3730e2b8038e61d451fcdec430f1339d3724f6d614a80f668d448d4a8f83d"
 ---
 # hashseal-verify (Python)
 

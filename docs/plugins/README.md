@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:0d8644af83250bf46069c8e0c3488d9d22003b42ddc942cef62f7b31be77f270"
+hashseal: "blake3:ae6be4e54ef0f07949cc8f213ea86e0331243e07ca8a4f1013122c2c9b6c80f8"
 ---
 # HashSeal build plugins
 

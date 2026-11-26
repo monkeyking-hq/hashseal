@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:4bdda8cbf431cd37e570ddd0f58cbd7f05f1513697e4b7008f199ab4322fd2b4"
+hashseal: "blake3:72fec3bce2cd58c69092b573e8d4188381ce245584b6be325366c95419ba68a6"
 ---
 # @hashseal/verify (JavaScript)
 

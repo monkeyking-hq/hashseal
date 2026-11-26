@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:d04f6cb76d1c8cd20dafbd1daa8e76e20f2651ed8ae051896b04abd31132bd52"
+hashseal: "blake3:e57c884abb4b2e9c931efa9625e13ab7f55527334c61da08789a397add1ec94d"
 ---
 # Official HashSeal test vectors
 
@@ -9,13 +9,13 @@ Generated from `hashseal-core` and required for every verify implementation (CLI
 
 | File | Spec | Notes |
 |------|------|--------|
-| [`instruct-v1.json`](./instruct-v1.json) | instruct-v1 | FULL canonical mode, blake3, field `hashseal` (**16** cases) |
+| [`instruct-v2.json`](./instruct-v2.json) | instruct-v2 | FULL canonical mode (lossless raw-FM), blake3, field `hashseal` (**19** cases) |
 | [`tree-v1.json`](./tree-v1.json) | tree-v1 | Tree file hash + verify findings (**12** cases) |
 
-## `instruct-v1.json`
+## `instruct-v2.json`
 
-- **canonical:** `full` — sorted non-reserved front-matter keys, then body (LF-normalized).
-- **Reserved FM keys** (excluded from hash): `hashseal`, `hashseal_sig`, `hashseal_key_id`.
+- **canonical:** `full` — lossless raw non-reserved front-matter lines + LF-normalized body with `HASHSEAL-INSTRUCT-V2` domain separation.
+- **Reserved FM keys** (excluded from hash): `hashseal` (or configured field), `hashseal_sig`, `hashseal_sig_format`, `hashseal_signer`, `hashseal_scope`, `hashseal_key_id`.
 - **Case kinds:**
   - `check` — run instruct check on `text`; assert `expect.ok`, `expect.status`, and digests.
   - `raw_digest` — hash `bytes_utf8` with blake3; assert `expect.digest`.
@@ -28,19 +28,21 @@ Generated from `hashseal-core` and required for every verify implementation (CLI
 | `mismatch` | Seal present but content digests differ |
 | `missing_seal` | No `hashseal` field (or no front matter) |
 | `invalid_format` | Seal present but digest string is not `alg:hex` (or unsupported by SDK) |
+| `suspicious_unicode` | Hidden Unicode tag, BiDi override, or zero-width smuggling detected |
 
 ### Edge cases covered
 
 Beyond simple body / FM / tamper / CRLF:
 
-- Reserved `hashseal_sig` and `hashseal_key_id` excluded from hash
+- Reserved `hashseal_sig`, `hashseal_sig_format`, `hashseal_signer`, `hashseal_scope`, and `hashseal_key_id` excluded from hash
+- YAML lists and nested maps in front matter protected verbatim
 - UTF-8 BOM stripped before parse
-- Front-matter `#` comment lines ignored
 - Malformed digest → `invalid_format`
+- BiDi / Unicode tag smuggling → `suspicious_unicode`
 
 ### Core regression
 
-`hashseal-core` loads this file in unit tests (`instruct::tests::official_vectors_instruct_v1`). Digests must not change without a deliberate vector version bump.
+`hashseal-core` loads this file in unit tests (`instruct::tests::official_vectors_instruct_v2`). Digests must not change without a deliberate vector version bump.
 
 ### Language SDKs
 
@@ -55,7 +57,7 @@ verify/dotnet/ — pure C#
 
 Each SDK should fail a case by printing case `id` and expected vs actual digests.
 
-All instruct runners must pass **16** cases from `instruct-v1.json`.
+All instruct runners must pass **19** cases from `instruct-v2.json`.
 
 ---
 

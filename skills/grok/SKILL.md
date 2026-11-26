@@ -4,7 +4,7 @@ description: >-
   When working in a HashSeal-enabled repo, treat sealed instruct files as
   authoritative, re-seal after intentional edits, never strip seal fields,
   and surface every check failure path with digests.
-hashseal: "blake3:9551f5e43b72547050d434f1a5ac1eb30a495ad756a5f131132d4d83d733b951"
+hashseal: "blake3:68bbae6d70b6402ec8ad41106fd446ee2280fcd343262d477b553d6d34256a18"
 ---
 
 # HashSeal — respect sealed instructions (Grok)

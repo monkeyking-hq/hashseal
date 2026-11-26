@@ -51,6 +51,8 @@ pub struct ReportCounts {
     pub missing_seal: usize,
     pub missing_signature: usize,
     pub bad_signature: usize,
+    pub unverified_signature: usize,
+    pub suspicious_unicode: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -158,6 +160,8 @@ impl ReportBuilder {
                 missing_seal: batch.summary.missing_seal,
                 missing_signature: batch.summary.missing_signature,
                 bad_signature: batch.summary.bad_signature,
+                unverified_signature: batch.summary.unverified_signature,
+                suspicious_unicode: batch.summary.suspicious_unicode,
                 ..Default::default()
             },
             #[cfg(feature = "json")]

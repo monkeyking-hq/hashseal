@@ -58,6 +58,42 @@ impl Digest {
         Self { algorithm, hex }
     }
 
+    /// Stream from any `Read` in 64 KiB chunks, returning `(digest, total_bytes)`.
+    pub fn compute_reader<R: std::io::Read>(
+        algorithm: Algorithm,
+        mut reader: R,
+    ) -> std::io::Result<(Self, u64)> {
+        let mut buf = [0u8; 64 * 1024];
+        let mut total = 0u64;
+        let hex = match algorithm {
+            Algorithm::Blake3 => {
+                let mut hasher = blake3::Hasher::new();
+                loop {
+                    let n = reader.read(&mut buf)?;
+                    if n == 0 {
+                        break;
+                    }
+                    total += n as u64;
+                    hasher.update(&buf[..n]);
+                }
+                hasher.finalize().to_hex().to_string()
+            }
+            Algorithm::Sha256 => {
+                let mut hasher = Sha256Hasher::new();
+                loop {
+                    let n = reader.read(&mut buf)?;
+                    if n == 0 {
+                        break;
+                    }
+                    total += n as u64;
+                    hasher.update(&buf[..n]);
+                }
+                hasher.finalize_hex()
+            }
+        };
+        Ok((Self { algorithm, hex }, total))
+    }
+
     pub fn qualified(&self) -> String {
         format!("{}:{}", self.algorithm.as_str(), self.hex)
     }
@@ -86,11 +122,14 @@ impl FromStr for Digest {
     }
 }
 
-fn pure_sha256_hex(data: &[u8]) -> String {
-    let mut h: [u32; 8] = [
-        0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab,
-        0x5be0cd19,
-    ];
+struct Sha256Hasher {
+    h: [u32; 8],
+    buf: [u8; 64],
+    buf_len: usize,
+    total_bytes: u64,
+}
+
+impl Sha256Hasher {
     const K: [u32; 64] = [
         0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4,
         0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe,
@@ -103,14 +142,20 @@ fn pure_sha256_hex(data: &[u8]) -> String {
         0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7,
         0xc67178f2,
     ];
-    let bit_len = (data.len() as u64).saturating_mul(8);
-    let mut msg = data.to_vec();
-    msg.push(0x80);
-    while (msg.len() % 64) != 56 {
-        msg.push(0);
+
+    fn new() -> Self {
+        Self {
+            h: [
+                0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab,
+                0x5be0cd19,
+            ],
+            buf: [0u8; 64],
+            buf_len: 0,
+            total_bytes: 0,
+        }
     }
-    msg.extend_from_slice(&bit_len.to_be_bytes());
-    for chunk in msg.chunks_exact(64) {
+
+    fn compress(h: &mut [u32; 8], chunk: &[u8; 64]) {
         let mut w = [0u32; 64];
         for i in 0..16 {
             w[i] = u32::from_be_bytes([
@@ -130,14 +175,14 @@ fn pure_sha256_hex(data: &[u8]) -> String {
         }
         let (mut a, mut b, mut c, mut d, mut e, mut f, mut g, mut hh) =
             (h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7]);
-        for i in 0..64 {
+        for (i, &wi) in w.iter().enumerate() {
             let s1 = e.rotate_right(6) ^ e.rotate_right(11) ^ e.rotate_right(25);
             let ch = (e & f) ^ ((!e) & g);
             let t1 = hh
                 .wrapping_add(s1)
                 .wrapping_add(ch)
-                .wrapping_add(K[i])
-                .wrapping_add(w[i]);
+                .wrapping_add(Self::K[i])
+                .wrapping_add(wi);
             let s0 = a.rotate_right(2) ^ a.rotate_right(13) ^ a.rotate_right(22);
             let maj = (a & b) ^ (a & c) ^ (b & c);
             let t2 = s0.wrapping_add(maj);
@@ -159,11 +204,59 @@ fn pure_sha256_hex(data: &[u8]) -> String {
         h[6] = h[6].wrapping_add(g);
         h[7] = h[7].wrapping_add(hh);
     }
-    let mut out = String::with_capacity(64);
-    for word in h {
-        out.push_str(&format!("{word:08x}"));
+
+    fn update(&mut self, mut data: &[u8]) {
+        self.total_bytes = self.total_bytes.saturating_add(data.len() as u64);
+        if self.buf_len > 0 {
+            let need = 64 - self.buf_len;
+            if data.len() < need {
+                self.buf[self.buf_len..self.buf_len + data.len()].copy_from_slice(data);
+                self.buf_len += data.len();
+                return;
+            }
+            self.buf[self.buf_len..].copy_from_slice(&data[..need]);
+            let block = self.buf;
+            Self::compress(&mut self.h, &block);
+            self.buf_len = 0;
+            data = &data[need..];
+        }
+        while data.len() >= 64 {
+            let block: &[u8; 64] = data[..64].try_into().unwrap();
+            Self::compress(&mut self.h, block);
+            data = &data[64..];
+        }
+        if !data.is_empty() {
+            self.buf[..data.len()].copy_from_slice(data);
+            self.buf_len = data.len();
+        }
     }
-    out
+
+    fn finalize_hex(mut self) -> String {
+        let bit_len = self.total_bytes.saturating_mul(8);
+        self.buf[self.buf_len] = 0x80;
+        self.buf_len += 1;
+        if self.buf_len > 56 {
+            self.buf[self.buf_len..].fill(0);
+            let block = self.buf;
+            Self::compress(&mut self.h, &block);
+            self.buf_len = 0;
+        }
+        self.buf[self.buf_len..56].fill(0);
+        self.buf[56..64].copy_from_slice(&bit_len.to_be_bytes());
+        let block = self.buf;
+        Self::compress(&mut self.h, &block);
+        let mut out = String::with_capacity(64);
+        for word in self.h {
+            out.push_str(&format!("{word:08x}"));
+        }
+        out
+    }
+}
+
+fn pure_sha256_hex(data: &[u8]) -> String {
+    let mut hasher = Sha256Hasher::new();
+    hasher.update(data);
+    hasher.finalize_hex()
 }
 
 #[cfg(test)]
@@ -184,5 +277,18 @@ mod tests {
             d.hex,
             "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
         );
+    }
+
+    #[test]
+    fn compute_reader_matches_compute() {
+        let large: Vec<u8> = (0..150_000).map(|i| (i % 251) as u8).collect();
+        for alg in [Algorithm::Blake3, Algorithm::Sha256] {
+            for data in [&b""[..], &b"small payload"[..], large.as_slice()] {
+                let expected = Digest::compute(alg, data);
+                let (got, n) = Digest::compute_reader(alg, std::io::Cursor::new(data)).unwrap();
+                assert_eq!(got, expected);
+                assert_eq!(n, data.len() as u64);
+            }
+        }
     }
 }

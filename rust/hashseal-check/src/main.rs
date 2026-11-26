@@ -5,7 +5,7 @@ use hashseal_core::gpg::GpgConfig;
 use hashseal_core::instruct::{check_instruct_path_with, CheckOpts, InstructOptions};
 use hashseal_core::result::BatchCheckResult;
 use hashseal_core::walk::{any_glob_str, walk_files};
-use hashseal_core::{CheckStatus, DEFAULT_DOCUMENT_INCLUDES, VERSION};
+use hashseal_core::{CheckStatus, UnicodePolicy, DEFAULT_DOCUMENT_INCLUDES, VERSION};
 use std::env;
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -14,6 +14,7 @@ fn main() -> ExitCode {
     let mut paths: Vec<PathBuf> = Vec::new();
     let mut no_fail = false;
     let mut require_signature = false;
+    let mut unicode_policy = UnicodePolicy::Fail;
     let mut root = PathBuf::from(".");
 
     let mut args = env::args().skip(1);
@@ -29,6 +30,20 @@ fn main() -> ExitCode {
             }
             "--no-fail" => no_fail = true,
             "--require-signature" => require_signature = true,
+            "--unicode-policy" => {
+                if let Some(p) = args.next() {
+                    match p.parse::<UnicodePolicy>() {
+                        Ok(pol) => unicode_policy = pol,
+                        Err(e) => {
+                            eprintln!("hashseal-check: {e}");
+                            return ExitCode::from(2);
+                        }
+                    }
+                } else {
+                    eprintln!("hashseal-check: --unicode-policy requires a value (fail|warn|off)");
+                    return ExitCode::from(2);
+                }
+            }
             "--root" => {
                 if let Some(r) = args.next() {
                     root = PathBuf::from(r);
@@ -43,7 +58,10 @@ fn main() -> ExitCode {
     }
 
     let opts = CheckOpts {
-        instruct: InstructOptions::default(),
+        instruct: InstructOptions {
+            unicode_policy,
+            ..InstructOptions::default()
+        },
         require_signature,
         verify_signature: true,
         gpg: GpgConfig::from_git(),
@@ -82,6 +100,8 @@ fn main() -> ExitCode {
                 CheckStatus::MissingSignature => "MISSING_SIGNATURE",
                 CheckStatus::BadSignature => "BAD_SIGNATURE",
                 CheckStatus::UntrustedKey => "UNTRUSTED_KEY",
+                CheckStatus::UnverifiedSignature => "UNVERIFIED_SIGNATURE",
+                CheckStatus::SuspiciousUnicode => "SUSPICIOUS_UNICODE",
                 CheckStatus::Valid => "OK",
             };
             println!("  {status}  {path}");
@@ -112,6 +132,7 @@ fn print_help() {
            --root DIR              Root to scan for default instruct globs (default .)\n\
            --no-fail               Exit 0 even on mismatch\n\
            --require-signature     Require hashseal_sig (GPG)\n\
+           --unicode-policy MODE   fail (default), warn, or off\n\
            -h, --help              Help\n\
            -V, --version           Version\n\n\
          With no PATH args, scans agent instruction files (AGENTS.md, CLAUDE.md,\n\

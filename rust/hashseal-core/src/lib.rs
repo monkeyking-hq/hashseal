@@ -13,6 +13,7 @@ pub mod report;
 pub mod result;
 pub mod timeutil;
 pub mod tree;
+pub mod unicode;
 pub mod walk;
 
 pub use bundle::{
@@ -36,7 +37,12 @@ pub use tree::{
     clean_tree_artifacts, collect_tree_files, seal_tree, verify_tree, Ledger, TreeSealOptions,
     TreeVerifyResult,
 };
+pub use unicode::{
+    format_unicode_findings, scan_suspicious_unicode, UnicodeFinding, UnicodePolicy,
+};
 
+#[cfg(feature = "json")]
+pub use bundle::{read_manifest, verify_bundle};
 #[cfg(feature = "json")]
 pub use tree::{read_ledger, write_ledger};
 

@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:7b37a046cdcccaeb574da2e19ee0b23a84faaa291ab5aa51a371cc8158414980"
+hashseal: "blake3:f5fcdad6db198027c348804736917c187abd99e625f90fd0b33d218f34d52f26"
 ---
 # HashSeal for Zed
 

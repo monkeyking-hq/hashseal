@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:d3bff8949c85239af3e9ce7e30cdb90ecf2bb17fa37d756f666d538e53fa49e4"
+hashseal: "blake3:7158998d4c60665595e31b2a02e42618f06d64193f638c1788284ecf9d9b6083"
 ---
 # HashSeal skill — Grok
 

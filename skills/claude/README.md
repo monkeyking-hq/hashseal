@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:c7ee214359b4f3d163ac43adf6c09a44a08ccb740bbfeb38defc697977a3667d"
+hashseal: "blake3:d788fbc30b327251721edc30f906fd26770573b97b1f556b3c3abb7add01f7f3"
 ---
 # HashSeal skill — Claude
 

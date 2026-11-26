@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:a1b69450239b8e9ed21f75279a782c0513a7d0d80a1c28a330e6b182b52b3118"
+hashseal: "blake3:42a4918ec89afba71718beac9791248f44c8b074a6a7b155de778f3404cfd5ad"
 ---
 # hashseal-verify (.NET)
 

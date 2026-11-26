@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "sealed_at": "2026-08-02T17:13:59Z",
-  "root": ".",
+  "sealed_at": "2026-11-26T16:27:06Z",
+  "root": "/home/nate/workspaces/mkd-workspace/hashseal/fixtures/mvp-demo",
   "algorithm": "blake3",
-  "tool_version": "0.1.0",
+  "tool_version": "0.2.0",
   "entries": [
     {
       "path": ".hashseal.json",
@@ -12,13 +12,13 @@
     },
     {
       "path": "AGENTS.md",
-      "digest": "blake3:4fe8faab39a984f7332eb98461378e3d8599efc3700751f3cea2eacde185a2c5",
+      "digest": "blake3:4bb71f554ecd7f65adfe75c252f982876224fbf321fc61ee589cf2aaea8339cf",
       "size": 411
     },
     {
       "path": "README.md",
-      "digest": "blake3:7d818d038143d5e3d34d8e6b2abaa0507096814b7e99fd4c22e1f6fd0520802b",
-      "size": 1858
+      "digest": "blake3:cf6eaecb117bb7ff6b61bb5781849e0ec9c43e1a647017b3e935d65863394102",
+      "size": 1857
     },
     {
       "path": "src/hello.txt",

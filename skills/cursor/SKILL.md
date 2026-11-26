@@ -3,7 +3,7 @@ name: hashseal-respect-seals
 description: >-
   HashSeal skill for Cursor: respect sealed AGENTS/rules files, re-seal after
   edits, never strip hashseal fields, report full MISMATCH lists.
-hashseal: "blake3:c72ab5a6a98e58005f48bb4c4518cfa9d86dee82deca139fe4fcbb2ee9655652"
+hashseal: "blake3:f6d47102746bd2209895d57d5781446064774ea1f5130a135762e61d4e7a1ba7"
 ---
 
 # HashSeal — respect sealed instructions (Cursor)

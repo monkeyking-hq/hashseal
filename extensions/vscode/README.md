@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:0ac7710593d40fb96f0e15707d91b601491b27a096628cee3886784bc993d3ac"
+hashseal: "blake3:9180c507654e55ea1db6126e643d33d746ceaed0deb7124cbcaa6cd78d1450b0"
 ---
 # HashSeal for VS Code
 

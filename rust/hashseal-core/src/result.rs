@@ -16,6 +16,8 @@ pub enum CheckStatus {
     MissingSignature,
     BadSignature,
     UntrustedKey,
+    UnverifiedSignature,
+    SuspiciousUnicode,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -134,6 +136,34 @@ impl CheckResult {
             message: Some(message.into()),
         }
     }
+
+    pub fn unverified_signature(
+        path: Option<PathBuf>,
+        digest: &Digest,
+        message: impl Into<String>,
+    ) -> Self {
+        Self {
+            ok: false,
+            status: CheckStatus::UnverifiedSignature,
+            algorithm: Some(digest.algorithm.as_str().to_string()),
+            expected: Some(digest.qualified()),
+            actual: None,
+            path,
+            message: Some(message.into()),
+        }
+    }
+
+    pub fn suspicious_unicode(path: Option<PathBuf>, message: impl Into<String>) -> Self {
+        Self {
+            ok: false,
+            status: CheckStatus::SuspiciousUnicode,
+            algorithm: None,
+            expected: None,
+            actual: None,
+            path,
+            message: Some(message.into()),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -156,6 +186,8 @@ pub struct BatchSummary {
     pub missing_signature: usize,
     pub bad_signature: usize,
     pub untrusted_key: usize,
+    pub unverified_signature: usize,
+    pub suspicious_unicode: usize,
 }
 
 impl BatchCheckResult {
@@ -174,6 +206,8 @@ impl BatchCheckResult {
                 CheckStatus::MissingSignature => summary.missing_signature += 1,
                 CheckStatus::BadSignature => summary.bad_signature += 1,
                 CheckStatus::UntrustedKey => summary.untrusted_key += 1,
+                CheckStatus::UnverifiedSignature => summary.unverified_signature += 1,
+                CheckStatus::SuspiciousUnicode => summary.suspicious_unicode += 1,
             }
         }
         let findings: Vec<_> = results.into_iter().filter(|r| !r.ok).collect();

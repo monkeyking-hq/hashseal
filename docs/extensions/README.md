@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:32acacc8f1bff2ec4f83aa724b9303bae2ecfe617eb656833f79bff6cb2b83bc"
+hashseal: "blake3:02b2dfd63c2e8d2d9063a6802456b728113e248c75495423982020fce31d5053"
 ---
 # HashSeal IDE / browser extensions
 

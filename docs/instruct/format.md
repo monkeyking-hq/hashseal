@@ -2,7 +2,7 @@
 layout: default
 title: Instruct seal format
 permalink: /instruct/format/
-hashseal: "blake3:6f7640fcaf0067cfd859b97b7b16f5cc4bfeb1970158d7562febd371116213cc"
+hashseal: "blake3:1a1b69cb304a38979f6d4b02640948d437b58b4f95a5a87ed8f094680554fd64"
 ---
 
 # Instruct seal format (Markdown)

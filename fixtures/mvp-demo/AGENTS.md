@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:9ee94e61a2fc80aa4834027f0232d798fa2427a795525e564f4bd53a4e9b3fc4"
+hashseal: "blake3:df6af74a073064b019ec8f338df21316d7ecb857eaf32a210692b9848dbfeeb4"
 ---
 # MVP demo agent instructions
 

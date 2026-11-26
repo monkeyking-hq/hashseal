@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:4bb7d53cf2a98ac8318d41722bfe3e15d2bfc21ad7388a3371b708f4784bff48"
+hashseal: "blake3:2105d9bbf27370ae46c2626cae8828142b65e84812d7bf227617007c14ad257f"
 ---
 # HashSeal skill — Kilo
 
