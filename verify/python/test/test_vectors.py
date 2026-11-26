@@ -16,12 +16,12 @@ sys.path.insert(0, str(ROOT))
 
 from check import blake3_digest, check_document_text  # noqa: E402
 
-VECTORS = ROOT.parent / "vectors" / "instruct-v1.json"
+VECTORS = ROOT.parent / "vectors" / "instruct-v2.json"
 
 
 def main() -> int:
     doc = json.loads(VECTORS.read_text(encoding="utf-8"))
-    if doc.get("spec") != "instruct-v1":
+    if doc.get("spec") != "instruct-v2":
         print(f"unexpected spec {doc.get('spec')}", file=sys.stderr)
         return 1
 

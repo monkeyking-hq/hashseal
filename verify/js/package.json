@@ -1,12 +1,12 @@
 {
   "name": "@hashseal/verify",
-  "version": "0.1.0",
-  "description": "HashSeal zero-dependency instruct document verify (digest check)",
+  "version": "0.4.0",
+  "description": "HashSeal zero-dependency instruct document verify (digest + SSHSIG + Unicode)",
   "license": "MIT",
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
-    "test": "node test/vectors.test.js && node test/tree-vectors.test.js"
+    "test": "node test/vectors.test.js && node test/tree-vectors.test.js && node test/signing.test.js"
   },
   "engines": {
     "node": ">=16"

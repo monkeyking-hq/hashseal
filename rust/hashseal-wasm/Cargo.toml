@@ -16,3 +16,4 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 # WASM: digest check only — same minimal core as hashseal-check
 hashseal-core = { path = "../hashseal-core", default-features = false, features = ["check"] }
+wasm-bindgen = "0.2"

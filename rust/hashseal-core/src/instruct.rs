@@ -947,4 +947,45 @@ mod tests {
         );
         assert!(dig_ok.ok, "{dig_ok:?}");
     }
+
+    #[test]
+    fn official_vectors_signing_v2() {
+        let has_ssh = std::process::Command::new("ssh-keygen")
+            .arg("--version")
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .is_ok();
+        if !has_ssh {
+            return;
+        }
+        let path = crate::test_paths::monorepo_path("verify/vectors/signing-v2.json");
+        let raw =
+            fs::read_to_string(&path).unwrap_or_else(|e| panic!("load {}: {e}", path.display()));
+        let doc: serde_json::Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(doc["spec"], "signing-v2");
+        let dir = tempdir().unwrap();
+
+        for (idx, case) in doc["cases"].as_array().unwrap().iter().enumerate() {
+            let id = case["id"].as_str().unwrap();
+            let allowed_path = dir.path().join(format!("allowed_{idx}"));
+            fs::write(&allowed_path, case["allowed_signers"].as_str().unwrap()).unwrap();
+            let opts = CheckOpts {
+                instruct: InstructOptions::default(),
+                require_signature: case["require_signature"].as_bool().unwrap_or(false),
+                digest_only: false,
+                expected_scope: case["path"].as_str().map(str::to_string),
+                signing: SigningOptions {
+                    format: SignFormat::Ssh,
+                    allowed_signers: Some(allowed_path),
+                    ..Default::default()
+                },
+            };
+            let r = check_instruct_bytes_with(case["text"].as_str().unwrap(), &opts, None);
+            let want_ok = case["expect"]["ok"].as_bool().unwrap();
+            let want_status = case["expect"]["status"].as_str().unwrap();
+            assert_eq!(r.ok, want_ok, "case {id}: {r:?}");
+            assert_eq!(status_name(r.status), want_status, "case {id}: {r:?}");
+        }
+    }
 }

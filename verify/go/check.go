@@ -1,28 +1,34 @@
-// Package hashseal — instruct document check (FULL canonical mode).
-// Mirrors hashseal-core instruct algorithm. Zero external package deps.
+// Package hashseal — instruct document check (instruct-v2: lossless raw-FM + Unicode + SSHSIG).
+// Mirrors hashseal-core instruct.rs & unicode.rs. Zero external package deps.
 //
 // Copyright (c) 2026 MonkeyKing.dev
 package hashseal
 
 import (
-	"sort"
+	"fmt"
 	"strings"
 )
 
 // Seal field names.
 const (
-	SealField  = "hashseal"
-	SigField   = "hashseal_sig"
-	KeyIDField = "hashseal_key_id"
+	SealField      = "hashseal"
+	SigField       = "hashseal_sig"
+	SigFormatField = "hashseal_sig_format"
+	SignerField    = "hashseal_signer"
+	ScopeField     = "hashseal_scope"
+	KeyIDField     = "hashseal_key_id"
 )
+
+const instructV2Domain = "HASHSEAL-INSTRUCT-V2"
 
 // Result of CheckDocumentText.
 type Result struct {
 	OK        bool    `json:"ok"`
-	Status    string  `json:"status"` // valid | mismatch | missing_seal | invalid_format
+	Status    string  `json:"status"`
 	Algorithm *string `json:"algorithm"`
 	Expected  *string `json:"expected"`
 	Actual    *string `json:"actual"`
+	Signer    *string `json:"signer,omitempty"`
 	Message   *string `json:"message"`
 }
 
@@ -33,29 +39,112 @@ type Digest struct {
 	Qualified string
 }
 
+// CheckOptions configures signature and Unicode checking.
+type CheckOptions struct {
+	Field            string
+	UnicodePolicy    string // "fail" (default) | "warn" | "off"
+	RequireSignature bool
+	DigestOnly       bool
+	AllowedSigners   string
+	Path             string
+}
+
+// UnicodeFinding describes a suspicious invisible or BiDi-control character.
+type UnicodeFinding struct {
+	Line      int
+	Col       int
+	Codepoint rune
+	Kind      string
+}
+
 func strPtr(s string) *string { return &s }
 
-// CheckDocumentText checks a sealed instruct markdown document (FULL mode).
+// ScanSuspiciousUnicode scans text for hidden prompt-injection / BiDi characters.
+func ScanSuspiciousUnicode(text string) []UnicodeFinding {
+	var findings []UnicodeFinding
+	line, col := 1, 1
+	idx := 0
+	for _, r := range text {
+		var kind string
+		switch {
+		case r >= 0xE0000 && r <= 0xE007F:
+			kind = "unicode_tag"
+		case (r >= 0x202A && r <= 0x202E) || (r >= 0x2066 && r <= 0x2069) || r == 0x061C || r == 0x200E || r == 0x200F:
+			kind = "bidi_control"
+		case r == 0x200B || r == 0x2060 || (r >= 0x2061 && r <= 0x2064):
+			kind = "zero_width"
+		case r == 0xFEFF && idx > 0:
+			kind = "embedded_bom"
+		}
+		if kind != "" {
+			findings = append(findings, UnicodeFinding{Line: line, Col: col, Codepoint: r, Kind: kind})
+		}
+		if r == '\n' {
+			line++
+			col = 1
+		} else {
+			col++
+		}
+		idx++
+	}
+	return findings
+}
+
+func formatUnicodeFindings(findings []UnicodeFinding) string {
+	if len(findings) == 0 {
+		return ""
+	}
+	f := findings[0]
+	head := fmt.Sprintf("U+%04X (%s) at %d:%d", f.Codepoint, f.Kind, f.Line, f.Col)
+	if len(findings) > 1 {
+		return fmt.Sprintf("%s (+%d more)", head, len(findings)-1)
+	}
+	return head
+}
+
+// CheckDocumentText checks a sealed instruct markdown document (instruct-v2 FULL mode).
 func CheckDocumentText(text string) Result {
-	return CheckDocumentTextField(text, SealField)
+	return CheckDocumentTextWith(text, CheckOptions{Field: SealField, UnicodePolicy: "fail"})
 }
 
 // CheckDocumentTextField is like CheckDocumentText with a custom seal field name.
 func CheckDocumentTextField(text, field string) Result {
+	return CheckDocumentTextWith(text, CheckOptions{Field: field, UnicodePolicy: "fail"})
+}
+
+// CheckDocumentTextWith checks an instruct document with full options.
+func CheckDocumentTextWith(text string, opts CheckOptions) Result {
+	field := opts.Field
+	if field == "" {
+		field = SealField
+	}
+	upol := opts.UnicodePolicy
+	if upol == "" {
+		upol = "fail"
+	}
+	if upol == "fail" {
+		if u := ScanSuspiciousUnicode(text); len(u) > 0 {
+			return Result{
+				OK: false, Status: "suspicious_unicode",
+				Message: strPtr(formatUnicodeFindings(u)),
+			}
+		}
+	}
+
 	doc := parseDocument(text)
 	if !doc.hadFrontMatter {
-		actual := computeDigest(doc)
+		actual := computeDigest(doc, field)
 		return Result{
 			OK: false, Status: "missing_seal", Algorithm: strPtr("blake3"),
-			Expected: nil, Actual: strPtr(actual.Qualified), Message: strPtr("missing hashseal field"),
+			Actual: strPtr(actual.Qualified), Message: strPtr("missing hashseal field"),
 		}
 	}
 	sealRaw := extractReservedField(doc.fmLines, field)
 	if sealRaw == nil {
-		actual := computeDigest(doc)
+		actual := computeDigest(doc, field)
 		return Result{
 			OK: false, Status: "missing_seal", Algorithm: strPtr("blake3"),
-			Expected: nil, Actual: strPtr(actual.Qualified), Message: strPtr("missing hashseal field"),
+			Actual: strPtr(actual.Qualified), Message: strPtr("missing hashseal field"),
 		}
 	}
 	expected := parseDigest(*sealRaw)
@@ -72,13 +161,58 @@ func CheckDocumentTextField(text, field string) Result {
 			Message: strPtr("unsupported algorithm: " + expected.Algorithm),
 		}
 	}
-	actual := computeDigest(doc)
+	actual := computeDigest(doc, field)
 	if actual.Hex != expected.Hex || actual.Algorithm != expected.Algorithm {
 		return Result{
 			OK: false, Status: "mismatch", Algorithm: strPtr(expected.Algorithm),
 			Expected: strPtr(expected.Qualified), Actual: strPtr(actual.Qualified),
 		}
 	}
+
+	sig := extractReservedField(doc.fmLines, SigField)
+	if opts.RequireSignature && sig == nil {
+		return Result{
+			OK: false, Status: "missing_signature", Algorithm: strPtr(actual.Algorithm),
+			Expected: strPtr(expected.Qualified), Message: strPtr("missing hashseal_sig"),
+		}
+	}
+
+	if sig != nil && !opts.DigestOnly && (opts.AllowedSigners != "" || opts.RequireSignature) {
+		declaredScope := extractReservedField(doc.fmLines, ScopeField)
+		if declaredScope != nil && opts.Path != "" && *declaredScope != "*" && *declaredScope != opts.Path {
+			return Result{
+				OK: false, Status: "bad_signature", Algorithm: strPtr(actual.Algorithm),
+				Expected: strPtr(expected.Qualified),
+				Message:  strPtr(fmt.Sprintf("signature scope mismatch: signed for '%s', checked at '%s'", *declaredScope, opts.Path)),
+			}
+		}
+		verifyScope := "*"
+		if declaredScope != nil {
+			verifyScope = *declaredScope
+		} else if opts.Path != "" {
+			verifyScope = opts.Path
+		}
+		if opts.AllowedSigners == "" {
+			return Result{
+				OK: false, Status: "unverified_signature", Algorithm: strPtr(actual.Algorithm),
+				Expected: strPtr(expected.Qualified), Message: strPtr("missing AllowedSigners for signature verification"),
+			}
+		}
+		sigPayload := fmt.Sprintf("HASHSEAL-SIG-V2\ndigest=%s\nscope=%s\n", actual.Qualified, verifyScope)
+		status, signer, msg := VerifySSHSig([]byte(sigPayload), *sig, opts.AllowedSigners, "hashseal")
+		if status == "good" {
+			return Result{
+				OK: true, Status: "valid", Algorithm: strPtr(actual.Algorithm),
+				Expected: strPtr(expected.Qualified), Actual: strPtr(actual.Qualified),
+				Signer: strPtr(signer),
+			}
+		}
+		return Result{
+			OK: false, Status: status, Algorithm: strPtr(actual.Algorithm),
+			Expected: strPtr(expected.Qualified), Message: strPtr(msg),
+		}
+	}
+
 	return Result{
 		OK: true, Status: "valid", Algorithm: strPtr(actual.Algorithm),
 		Expected: strPtr(expected.Qualified), Actual: strPtr(actual.Qualified),
@@ -115,10 +249,7 @@ type parsedDoc struct {
 }
 
 func stripBom(s string) string {
-	if strings.HasPrefix(s, "\ufeff") {
-		return strings.TrimPrefix(s, "\ufeff")
-	}
-	return s
+	return strings.TrimPrefix(s, "\ufeff")
 }
 
 func normalizeLf(s string) string {
@@ -148,7 +279,7 @@ func parseDocument(text string) parsedDoc {
 			closed := len(rest) == 0 || strings.HasPrefix(rest, "\n") || strings.HasPrefix(rest, "\r\n") || strings.HasPrefix(rest, "\r")
 			if closed {
 				fmBlock := afterOpen[:offset+idx]
-				body := afterOpen[idx+1+3:]
+				body := afterOpen[offset+idx+1+3:]
 				if strings.HasPrefix(body, "\r\n") {
 					body = body[2:]
 				} else if strings.HasPrefix(body, "\n") {
@@ -166,8 +297,14 @@ func parseDocument(text string) parsedDoc {
 	return parsedDoc{fmLines: nil, hadFrontMatter: false, bodyRaw: text}
 }
 
-func isReservedKey(key string) bool {
-	return key == SealField || key == SigField || key == KeyIDField
+func isReservedKey(key, sealField string) bool {
+	return key == sealField ||
+		key == SealField ||
+		key == SigField ||
+		key == SigFormatField ||
+		key == SignerField ||
+		key == ScopeField ||
+		key == KeyIDField
 }
 
 func trimLeadingSpaceTab(s string) string {
@@ -178,112 +315,46 @@ func trimLeadingSpaceTab(s string) string {
 	return s[i:]
 }
 
-func forEachFmEntry(lines []string, f func(key, val string)) {
-	i := 0
-	n := len(lines)
-	for i < n {
-		line := lines[i]
-		trimmed := strings.TrimSpace(line)
-		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
-			i++
-			continue
-		}
-		if strings.HasPrefix(line, " ") || strings.HasPrefix(line, "\t") {
-			i++
-			continue
-		}
-		colon := strings.Index(trimmed, ":")
-		if colon >= 0 {
-			key := strings.TrimSpace(trimmed[:colon])
-			rest := strings.TrimSpace(trimmed[colon+1:])
-			if isReservedKey(key) {
-				i++
-				for i < n {
-					L := lines[i]
-					if strings.HasPrefix(L, " ") || strings.HasPrefix(L, "\t") {
-						i++
-						continue
-					}
-					if strings.TrimSpace(L) == "" {
-						if i+1 < n && (strings.HasPrefix(lines[i+1], " ") || strings.HasPrefix(lines[i+1], "\t")) {
-							i++
-							continue
-						}
-						break
-					}
-					break
-				}
-				continue
-			}
-			if rest == "|" || rest == ">" || rest == "|-" || rest == ">-" {
-				val := ""
-				i++
-				for i < n && (strings.HasPrefix(lines[i], " ") || strings.HasPrefix(lines[i], "\t")) {
-					if val != "" {
-						val += "\n"
-					}
-					val += trimLeadingSpaceTab(lines[i])
-					i++
-				}
-				f(key, val)
-				continue
-			}
-			val := rest
-			if len(val) >= 2 && strings.HasPrefix(val, "\"") && strings.HasSuffix(val, "\"") {
-				val = val[1 : len(val)-1]
-			}
-			f(key, val)
-		}
-		i++
-	}
-}
-
-func fmMap(lines []string) map[string]string {
-	m := make(map[string]string)
-	forEachFmEntry(lines, func(k, v string) {
-		m[k] = v
-	})
-	return m
-}
-
 func extractReservedField(lines []string, field string) *string {
 	i := 0
 	n := len(lines)
 	for i < n {
-		trimmed := strings.TrimSpace(lines[i])
-		colon := strings.Index(trimmed, ":")
-		if colon >= 0 {
-			k := strings.TrimSpace(trimmed[:colon])
-			if k == field {
-				rest := strings.TrimSpace(trimmed[colon+1:])
-				if rest == "|" || rest == ">" || rest == "|-" || rest == ">-" {
-					val := ""
-					i++
-					for i < n {
-						L := lines[i]
-						empty := strings.TrimSpace(L) == ""
-						indented := strings.HasPrefix(L, " ") || strings.HasPrefix(L, "\t")
-						if indented || (empty && i+1 < n && (strings.HasPrefix(lines[i+1], " ") || strings.HasPrefix(lines[i+1], "\t"))) {
-							if empty {
-								val += "\n"
+		if !strings.HasPrefix(lines[i], " ") && !strings.HasPrefix(lines[i], "\t") {
+			trimmed := strings.TrimSpace(lines[i])
+			colon := strings.Index(trimmed, ":")
+			if colon >= 0 {
+				k := strings.TrimSpace(trimmed[:colon])
+				if k == field {
+					rest := strings.TrimSpace(trimmed[colon+1:])
+					if rest == "|" || rest == ">" || rest == "|-" || rest == ">-" {
+						val := ""
+						i++
+						for i < n {
+							L := lines[i]
+							empty := strings.TrimSpace(L) == ""
+							indented := strings.HasPrefix(L, " ") || strings.HasPrefix(L, "\t")
+							if indented || (empty && i+1 < n && (strings.HasPrefix(lines[i+1], " ") || strings.HasPrefix(lines[i+1], "\t"))) {
+								if empty {
+									val += "\n"
+									i++
+									continue
+								}
+								if val != "" {
+									val += "\n"
+								}
+								val += trimLeadingSpaceTab(L)
 								i++
 								continue
 							}
-							if val != "" {
-								val += "\n"
-							}
-							val += trimLeadingSpaceTab(L)
-							i++
-							continue
+							break
 						}
-						break
+						return &val
 					}
-					return &val
+					if len(rest) >= 2 && strings.HasPrefix(rest, "\"") && strings.HasSuffix(rest, "\"") {
+						rest = rest[1 : len(rest)-1]
+					}
+					return &rest
 				}
-				if len(rest) >= 2 && strings.HasPrefix(rest, "\"") && strings.HasSuffix(rest, "\"") {
-					rest = rest[1 : len(rest)-1]
-				}
-				return &rest
 			}
 		}
 		i++
@@ -291,41 +362,53 @@ func extractReservedField(lines []string, field string) *string {
 	return nil
 }
 
-func canonicalFmString(m map[string]string) string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	var b strings.Builder
-	for _, k := range keys {
-		v := m[k]
-		b.WriteString(k)
-		b.WriteString(": ")
-		if v == "" || strings.Contains(v, ":") || strings.Contains(v, "#") || strings.Contains(v, " ") {
-			b.WriteByte('"')
-			b.WriteString(strings.ReplaceAll(v, `"`, `\"`))
-			b.WriteByte('"')
-		} else {
-			b.WriteString(v)
+func stripReservedFmLines(lines []string, sealField string) []string {
+	out := make([]string, 0, len(lines))
+	i := 0
+	n := len(lines)
+	for i < n {
+		trimmed := strings.TrimSpace(lines[i])
+		colon := strings.Index(trimmed, ":")
+		if colon >= 0 && !strings.HasPrefix(lines[i], " ") && !strings.HasPrefix(lines[i], "\t") && isReservedKey(strings.TrimSpace(trimmed[:colon]), sealField) {
+			i++
+			for i < n {
+				L := lines[i]
+				if strings.HasPrefix(L, " ") || strings.HasPrefix(L, "\t") {
+					i++
+					continue
+				}
+				if strings.TrimSpace(L) == "" && i+1 < n && (strings.HasPrefix(lines[i+1], " ") || strings.HasPrefix(lines[i+1], "\t")) {
+					i++
+					continue
+				}
+				break
+			}
+			continue
 		}
-		b.WriteByte('\n')
+		out = append(out, lines[i])
+		i++
 	}
-	return b.String()
+	return out
 }
 
-func hashPayload(doc parsedDoc) []byte {
+func hashPayload(doc parsedDoc, sealField string) []byte {
 	bodyLf := normalizeLf(doc.bodyRaw)
-	m := fmMap(doc.fmLines)
-	if len(m) == 0 {
-		return []byte(bodyLf)
+	kept := stripReservedFmLines(doc.fmLines, sealField)
+	hasNonEmpty := false
+	for _, l := range kept {
+		if strings.TrimSpace(l) != "" {
+			hasNonEmpty = true
+			break
+		}
 	}
-	payload := canonicalFmString(m) + "\n" + bodyLf
-	return []byte(payload)
+	if hasNonEmpty {
+		return []byte(instructV2Domain + "\nFM\n" + strings.Join(kept, "\n") + "\nBODY\n" + bodyLf)
+	}
+	return []byte(instructV2Domain + "\nBODY\n" + bodyLf)
 }
 
-func computeDigest(doc parsedDoc) Digest {
-	return Blake3Digest(hashPayload(doc))
+func computeDigest(doc parsedDoc, sealField string) Digest {
+	return Blake3Digest(hashPayload(doc, sealField))
 }
 
 func parseDigest(raw string) *Digest {

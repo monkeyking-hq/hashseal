@@ -1,18 +1,78 @@
-//! HashSeal WASM / embedded verify API.
+//! HashSeal WASM / embedded verify API (`wasm-bindgen`).
 //!
 //! Copyright (c) 2026 MonkeyKing.dev
 
 use hashseal_core::instruct::{check_instruct_bytes, InstructOptions};
 use hashseal_core::result::CheckResult;
+use hashseal_core::CheckStatus;
+use wasm_bindgen::prelude::*;
 
-/// Check instruct markdown text; returns structured result (findings-capable).
+/// Check instruct markdown text; returns structured result (Rust API).
 pub fn check_text(text: &str) -> CheckResult {
     check_instruct_bytes(text, &InstructOptions::default())
 }
 
-/// Library version.
-pub fn version() -> &'static str {
-    hashseal_core::VERSION
+fn status_str(s: CheckStatus) -> &'static str {
+    match s {
+        CheckStatus::Valid => "valid",
+        CheckStatus::MissingSeal => "missing_seal",
+        CheckStatus::Mismatch => "mismatch",
+        CheckStatus::InvalidFormat => "invalid_format",
+        CheckStatus::IoError => "io_error",
+        CheckStatus::MissingSignature => "missing_signature",
+        CheckStatus::BadSignature => "bad_signature",
+        CheckStatus::UntrustedKey => "untrusted_key",
+        CheckStatus::UnverifiedSignature => "unverified_signature",
+        CheckStatus::SuspiciousUnicode => "suspicious_unicode",
+        CheckStatus::LockedFileRemoved => "locked_file_removed",
+        CheckStatus::UnapprovedFile => "unapproved_file",
+    }
+}
+
+fn json_escape(s: &str) -> String {
+    let mut out = String::with_capacity(s.len() + 2);
+    out.push('"');
+    for ch in s.chars() {
+        match ch {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            c if (c as u32) < 0x20 => out.push_str(&format!("\\u{:04x}", c as u32)),
+            c => out.push(c),
+        }
+    }
+    out.push('"');
+    out
+}
+
+fn opt_json(v: Option<&str>) -> String {
+    match v {
+        Some(s) => json_escape(s),
+        None => "null".into(),
+    }
+}
+
+/// Check instruct markdown text and return JSON string (WASM export).
+#[wasm_bindgen]
+pub fn check_text_json(text: &str) -> String {
+    let r = check_text(text);
+    format!(
+        "{{\"ok\":{},\"status\":{},\"algorithm\":{},\"expected\":{},\"actual\":{},\"message\":{}}}",
+        r.ok,
+        json_escape(status_str(r.status)),
+        opt_json(r.algorithm.as_deref()),
+        opt_json(r.expected.as_deref()),
+        opt_json(r.actual.as_deref()),
+        opt_json(r.message.as_deref()),
+    )
+}
+
+/// Library version (WASM export).
+#[wasm_bindgen]
+pub fn version() -> String {
+    hashseal_core::VERSION.to_string()
 }
 
 #[cfg(test)]
@@ -26,5 +86,8 @@ mod tests {
         let (sealed, _) = seal_instruct_bytes("# hi\n", &opts).unwrap();
         let r = check_text(&sealed);
         assert!(r.ok);
+        let j = check_text_json(&sealed);
+        assert!(j.contains("\"ok\":true"));
+        assert!(j.contains("\"status\":\"valid\""));
     }
 }

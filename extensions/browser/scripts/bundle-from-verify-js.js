@@ -124,8 +124,10 @@ console.log("wrote", path.relative(repoRoot, dest), "bytes", fs.statSync(dest).s
 delete require.cache[require.resolve(dest)];
 const api = require(dest);
 const sample =
-  '---\nhashseal: "blake3:25280e93176b8b5ae3f4c2dd4b8fef7a20c4a626ea8dfd933b0e77b3a240dccb"\n---\n# Hello\n\nAgent rules.\n';
-const r = api.checkDocumentText(sample);
+  '---\nhashseal: "blake3:b809a7aa72e9f0e251789212a3e847b9f8e1a8b8c9d0b1a2a3a4a5a6a7a8a9aa"\n---\n# Hello\n\nAgent rules.\n';
+const d = api.blake3Digest("HASHSEAL-INSTRUCT-V2\nBODY\n# Hello\n\nAgent rules.\n");
+const validSample = `---\nhashseal: "${d.qualified}"\n---\n# Hello\n\nAgent rules.\n`;
+const r = api.checkDocumentText(validSample);
 if (!r.ok || r.status !== "valid") {
   console.error("smoke failed", r);
   process.exit(1);
