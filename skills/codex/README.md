@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:d828c3b1b0e746d0fd97765fdd1db9862c3c6ffda5e470e7470d76c3531ac67d"
+hashseal: "blake3:8cf78bf13ea5fd952a26144a7f85ca778a68a40f8fa8de9e89af358882a91fca"
 ---
 # HashSeal skill — Codex
 

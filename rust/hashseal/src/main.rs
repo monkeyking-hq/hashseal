@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 MonkeyKing.dev
 
 use clap::{Parser, Subcommand, ValueEnum};
-use hashseal_core::bundle::{digest_artifacts, write_bundle, BundlePaths};
+use hashseal_core::bundle::{digest_artifacts, verify_bundle, write_bundle, BundlePaths};
 use hashseal_core::config::HashSealConfig;
 use hashseal_core::gpg::GpgConfig;
 use hashseal_core::instruct::{
@@ -14,7 +14,7 @@ use hashseal_core::result::{BatchCheckResult, CheckResult};
 use hashseal_core::tree::{
     clean_tree_artifacts, read_ledger, seal_tree, verify_tree, write_ledger, TreeSealOptions,
 };
-use hashseal_core::{CheckStatus, VERSION};
+use hashseal_core::{CheckStatus, UnicodePolicy, VERSION};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -57,6 +57,8 @@ enum Commands {
         /// Artifact paths to digest into the release bundle
         #[arg(long = "artifact")]
         artifacts: Vec<PathBuf>,
+        #[arg(long, value_enum)]
+        unicode_policy: Option<UnicodePolicyArg>,
         #[arg(long, value_enum, default_value_t = OutputFormat::Human)]
         format: OutputFormat,
     },
@@ -89,6 +91,8 @@ enum Commands {
         no_fail: bool,
         #[arg(long)]
         require_signature: bool,
+        #[arg(long, value_enum)]
+        unicode_policy: Option<UnicodePolicyArg>,
     },
     Unseal {
         #[arg(long)]
@@ -110,6 +114,23 @@ enum Commands {
 enum OutputFormat {
     Human,
     Json,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum UnicodePolicyArg {
+    Fail,
+    Warn,
+    Off,
+}
+
+impl From<UnicodePolicyArg> for UnicodePolicy {
+    fn from(a: UnicodePolicyArg) -> Self {
+        match a {
+            UnicodePolicyArg::Fail => UnicodePolicy::Fail,
+            UnicodePolicyArg::Warn => UnicodePolicy::Warn,
+            UnicodePolicyArg::Off => UnicodePolicy::Off,
+        }
+    }
 }
 
 fn main() -> ExitCode {
@@ -142,9 +163,13 @@ fn run(cli: Cli) -> Result<ExitCode, Box<dyn std::error::Error>> {
             overlay,
             ledger,
             artifacts,
+            unicode_policy,
             format,
         } => {
             let cfg = load_config(&root, config.as_deref(), overlay.as_deref())?;
+            let upol = unicode_policy
+                .map(Into::into)
+                .unwrap_or(cfg.document_unicode_policy()?);
             let do_instruct = instruct || (!tree && !release && cfg.document.enable);
             let do_tree = tree || release || (!instruct && !release);
             // if only --instruct, skip tree; if only --tree, skip instruct unless document.enable and not exclusive
@@ -162,7 +187,7 @@ fn run(cli: Cli) -> Result<ExitCode, Box<dyn std::error::Error>> {
             };
 
             if do_instruct {
-                run_seal_instruct(&root, &cfg, sign, signing_key.clone(), format)?;
+                run_seal_instruct(&root, &cfg, sign, signing_key.clone(), upol, format)?;
             }
             if do_tree || release {
                 run_seal_tree(&root, &cfg, ledger.as_deref(), release, &artifacts, format)?;
@@ -194,8 +219,12 @@ fn run(cli: Cli) -> Result<ExitCode, Box<dyn std::error::Error>> {
             format,
             no_fail,
             require_signature,
+            unicode_policy,
         } => {
             let cfg = load_config(&root, config.as_deref(), None)?;
+            let upol = unicode_policy
+                .map(Into::into)
+                .unwrap_or(cfg.document_unicode_policy()?);
             run_check(
                 &root,
                 &paths,
@@ -203,6 +232,7 @@ fn run(cli: Cli) -> Result<ExitCode, Box<dyn std::error::Error>> {
                 format,
                 no_fail,
                 require_signature || cfg.signing.require,
+                upol,
             )
         }
         Commands::Unseal {
@@ -300,6 +330,7 @@ fn run_seal_instruct(
     cfg: &HashSealConfig,
     sign: bool,
     signing_key: Option<String>,
+    unicode_policy: UnicodePolicy,
     format: OutputFormat,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let sign = sign || cfg.signing.enable;
@@ -309,6 +340,7 @@ fn run_seal_instruct(
             algorithm: cfg.document_algorithm()?,
             canonical: cfg.document_canonical(),
             auto_frontmatter: cfg.document.auto_frontmatter,
+            unicode_policy,
         },
         sign,
         gpg: gpg_from(cfg, signing_key),
@@ -435,17 +467,23 @@ fn run_verify(
     format: OutputFormat,
 ) -> Result<ExitCode, Box<dyn std::error::Error>> {
     let cfg = load_config(root, config, None)?;
-    let ledger_path = if let Some(b) = bundle {
+    let bp = BundlePaths::under(root);
+    let bundle_dir = if let Some(b) = bundle {
+        Some(b.to_path_buf())
+    } else if ledger.is_none() && bp.manifest.is_file() {
+        Some(bp.dir.clone())
+    } else {
+        None
+    };
+
+    let ledger_path = if let Some(b) = &bundle_dir {
         b.join("ledger.json")
     } else if let Some(l) = ledger {
         l.to_path_buf()
+    } else if bp.ledger.is_file() {
+        bp.ledger
     } else {
-        let bp = BundlePaths::under(root);
-        if bp.ledger.is_file() {
-            bp.ledger
-        } else {
-            cfg.default_ledger_path(root)
-        }
+        cfg.default_ledger_path(root)
     };
 
     if !ledger_path.is_file() {
@@ -463,7 +501,11 @@ fn run_verify(
         exclude: cfg.tree.exclude.clone(),
         line_endings_lf_text: cfg.tree.line_endings == "lf-text",
     };
-    let result = verify_tree(root, &led, &opts)?;
+    let result = if let Some(b) = &bundle_dir {
+        verify_bundle(root, b, &opts)?
+    } else {
+        verify_tree(root, &led, &opts)?
+    };
     let exit = if result.ok || no_fail || cfg.enforce.on_tree_mismatch == "warn" {
         0
     } else {
@@ -527,6 +569,7 @@ fn run_check(
     format: OutputFormat,
     no_fail: bool,
     require_signature: bool,
+    unicode_policy: UnicodePolicy,
 ) -> Result<ExitCode, Box<dyn std::error::Error>> {
     let opts = CheckOpts {
         instruct: InstructOptions {
@@ -534,6 +577,7 @@ fn run_check(
             algorithm: cfg.document_algorithm()?,
             canonical: cfg.document_canonical(),
             auto_frontmatter: cfg.document.auto_frontmatter,
+            unicode_policy,
         },
         require_signature,
         verify_signature: true,
@@ -600,6 +644,8 @@ fn print_finding_human(f: &CheckResult) {
         CheckStatus::MissingSignature => "MISSING_SIGNATURE",
         CheckStatus::BadSignature => "BAD_SIGNATURE",
         CheckStatus::UntrustedKey => "UNTRUSTED_KEY",
+        CheckStatus::UnverifiedSignature => "UNVERIFIED_SIGNATURE",
+        CheckStatus::SuspiciousUnicode => "SUSPICIOUS_UNICODE",
         CheckStatus::Valid => "OK",
     };
     println!("  {status}  {path}");

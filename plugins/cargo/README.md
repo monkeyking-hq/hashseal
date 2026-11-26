@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:a2e8586685db1d8b747e5831cacf21229886b7f4ef2c7c660c31b538c55e482f"
+hashseal: "blake3:eae08716d223d312839ac227a7be00be7ea64fc68b2c5499eec306252f304c8d"
 ---
 # hashseal cargo integration
 

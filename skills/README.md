@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:8d65151f95af4f52f691a955cff4208d4b573ffd1a14e9c11bfd2836e7e3c377"
+hashseal: "blake3:b4c82d561f4e73615a4008002dc959825895f5a94ec39c05f8ceafa9674efd50"
 ---
 # HashSeal skills packs
 

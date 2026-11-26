@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:211fd0fc4d1cd661f2930299770fd0f684feb8a7b52b5bbe96dc39c2812f7f61"
+hashseal: "blake3:69293d800fdf094050c149aeaf619f2f57c1f44a58c56b387c6bdb84c84419f4"
 ---
 # hashseal-verify (Go)
 

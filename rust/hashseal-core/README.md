@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:7672e589cc02c1c72ebc457a5c409340c487e70c09bf84b2aed8a5c6af9e304b"
+hashseal: "blake3:004c3edc20cf0b6717659595d503720cf29793dc0d32cf580ba38566e865e1a7"
 ---
 # hashseal-core
 

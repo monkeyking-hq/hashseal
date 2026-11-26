@@ -1,29 +1,40 @@
-//! Instruct-file seals (Markdown front matter + hash of seal-excluded content).
+//! Instruct-file seals (`instruct-v2`: Markdown front matter + lossless raw-FM hash).
 //!
 //! Optional GPG signature field `hashseal_sig` after `hashseal` (git-aligned).
 //! Signed, Sealed, Delivered - I'm Yours.
 
 use crate::digest::{Algorithm, Digest};
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::gpg::{self, GpgConfig, GpgVerifyStatus};
 use crate::result::CheckResult;
-use std::collections::BTreeMap;
+use crate::unicode::{format_unicode_findings, scan_suspicious_unicode, UnicodePolicy};
 use std::fs;
 use std::path::{Path, PathBuf};
 
 /// YAML keys excluded from the content hash (seal + signature domain).
 pub const SEAL_FIELD: &str = "hashseal";
 pub const SIG_FIELD: &str = "hashseal_sig";
+pub const SIG_FORMAT_FIELD: &str = "hashseal_sig_format";
+pub const SIGNER_FIELD: &str = "hashseal_signer";
+pub const SCOPE_FIELD: &str = "hashseal_scope";
 pub const KEY_ID_FIELD: &str = "hashseal_key_id";
 
-fn is_reserved_fm_key(key: &str) -> bool {
-    matches!(key, SEAL_FIELD | SIG_FIELD | KEY_ID_FIELD)
+/// Domain separation prefixes for `instruct-v2` canonical hashing.
+pub const INSTRUCT_V2_DOMAIN: &str = "HASHSEAL-INSTRUCT-V2";
+pub const INSTRUCT_V2_BODY_DOMAIN: &str = "HASHSEAL-INSTRUCT-V2-BODY";
+
+fn is_reserved_fm_key(key: &str, seal_field: &str) -> bool {
+    key == seal_field
+        || matches!(
+            key,
+            SEAL_FIELD | SIG_FIELD | SIG_FORMAT_FIELD | SIGNER_FIELD | SCOPE_FIELD | KEY_ID_FIELD
+        )
 }
 
 /// How to build the hashed payload for an instruct file.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum CanonicalMode {
-    /// Front matter (minus seal/sig fields), sorted keys + body.
+    /// Raw front-matter lines (minus reserved seal/sig fields) + body.
     #[default]
     Full,
     /// Body only (after front matter).
@@ -37,6 +48,7 @@ pub struct InstructOptions {
     pub algorithm: Algorithm,
     pub canonical: CanonicalMode,
     pub auto_frontmatter: bool,
+    pub unicode_policy: UnicodePolicy,
 }
 
 impl Default for InstructOptions {
@@ -46,6 +58,7 @@ impl Default for InstructOptions {
             algorithm: Algorithm::Blake3,
             canonical: CanonicalMode::Full,
             auto_frontmatter: true,
+            unicode_policy: UnicodePolicy::Fail,
         }
     }
 }
@@ -109,7 +122,7 @@ fn parse_document(text: &str) -> ParsedDoc {
                 || rest.starts_with('\r');
             if closed {
                 let fm_block = &after_open[..offset + idx];
-                let body_start_in_after = idx + 1 + 3;
+                let body_start_in_after = offset + idx + 1 + 3;
                 let mut body = &after_open[body_start_in_after..];
                 if let Some(b) = body.strip_prefix("\r\n") {
                     body = b;
@@ -139,108 +152,40 @@ fn parse_document(text: &str) -> ParsedDoc {
     }
 }
 
-/// Walk FM lines, skipping reserved keys and their multiline continuations.
-fn for_each_fm_entry(lines: &[String], mut f: impl FnMut(&str, &str)) {
-    let mut i = 0;
-    while i < lines.len() {
-        let line = lines[i].as_str();
-        let trimmed = line.trim();
-        if trimmed.is_empty() || trimmed.starts_with('#') {
-            i += 1;
-            continue;
-        }
-        // Continuation without a key (orphan) — skip
-        if line.starts_with(' ') || line.starts_with('\t') {
-            i += 1;
-            continue;
-        }
-        if let Some((k, v)) = trimmed.split_once(':') {
-            let key = k.trim();
-            let rest = v.trim();
-            if is_reserved_fm_key(key) {
-                // Skip reserved key + indented block
-                i += 1;
-                while i < lines.len()
-                    && (lines[i].starts_with(' ')
-                        || lines[i].starts_with('\t')
-                        || lines[i].trim().is_empty())
-                {
-                    // empty lines inside block only if indented? YAML empty lines allowed in block
-                    if lines[i].trim().is_empty() {
-                        // peek: if next is indented or end of reserved, consume empty as part of block
-                        if i + 1 < lines.len()
-                            && (lines[i + 1].starts_with(' ') || lines[i + 1].starts_with('\t'))
-                        {
-                            i += 1;
-                            continue;
-                        }
-                        break;
-                    }
-                    i += 1;
-                }
-                continue;
-            }
-            if rest == "|" || rest == ">" || rest == "|-" || rest == ">-" {
-                let mut val = String::new();
-                i += 1;
-                while i < lines.len() && (lines[i].starts_with(' ') || lines[i].starts_with('\t')) {
-                    if !val.is_empty() {
-                        val.push('\n');
-                    }
-                    val.push_str(lines[i].trim_start());
-                    i += 1;
-                }
-                f(key, &val);
-                continue;
-            }
-            let val = rest.trim_matches('"');
-            f(key, val);
-        }
-        i += 1;
-    }
-}
-
-fn fm_map(lines: &[String]) -> BTreeMap<String, String> {
-    let mut map = BTreeMap::new();
-    for_each_fm_entry(lines, |k, v| {
-        map.insert(k.to_string(), v.to_string());
-    });
-    map
-}
-
 fn extract_reserved_field(lines: &[String], field: &str) -> Option<String> {
     let mut i = 0;
     while i < lines.len() {
-        let trimmed = lines[i].trim();
-        if let Some((k, v)) = trimmed.split_once(':') {
-            if k.trim() == field {
-                let rest = v.trim();
-                if rest == "|" || rest == ">" || rest == "|-" || rest == ">-" {
-                    let mut val = String::new();
-                    i += 1;
-                    while i < lines.len()
-                        && (lines[i].starts_with(' ')
-                            || lines[i].starts_with('\t')
-                            || (lines[i].trim().is_empty()
-                                && i + 1 < lines.len()
-                                && (lines[i + 1].starts_with(' ')
-                                    || lines[i + 1].starts_with('\t'))))
-                    {
-                        if lines[i].trim().is_empty() {
-                            val.push('\n');
-                            i += 1;
-                            continue;
-                        }
-                        if !val.is_empty() {
-                            val.push('\n');
-                        }
-                        // preserve relative indent strip common min later — use raw after first indent
-                        val.push_str(lines[i].trim_start());
+        if !lines[i].starts_with(' ') && !lines[i].starts_with('\t') {
+            let trimmed = lines[i].trim();
+            if let Some((k, v)) = trimmed.split_once(':') {
+                if k.trim() == field {
+                    let rest = v.trim();
+                    if rest == "|" || rest == ">" || rest == "|-" || rest == ">-" {
+                        let mut val = String::new();
                         i += 1;
+                        while i < lines.len()
+                            && (lines[i].starts_with(' ')
+                                || lines[i].starts_with('\t')
+                                || (lines[i].trim().is_empty()
+                                    && i + 1 < lines.len()
+                                    && (lines[i + 1].starts_with(' ')
+                                        || lines[i + 1].starts_with('\t'))))
+                        {
+                            if lines[i].trim().is_empty() {
+                                val.push('\n');
+                                i += 1;
+                                continue;
+                            }
+                            if !val.is_empty() {
+                                val.push('\n');
+                            }
+                            val.push_str(lines[i].trim_start());
+                            i += 1;
+                        }
+                        return Some(val);
                     }
-                    return Some(val);
+                    return Some(rest.trim_matches('"').to_string());
                 }
-                return Some(rest.trim_matches('"').to_string());
             }
         }
         i += 1;
@@ -255,57 +200,17 @@ fn extract_seal(
     extract_reserved_field(lines, seal_field).map(|raw| raw.parse())
 }
 
-fn canonical_fm_string(map: &BTreeMap<String, String>) -> String {
-    let mut s = String::new();
-    for (k, v) in map {
-        s.push_str(k);
-        s.push_str(": ");
-        if v.is_empty() || v.contains(':') || v.contains('#') || v.contains(' ') {
-            s.push('"');
-            s.push_str(&v.replace('"', "\\\""));
-            s.push('"');
-        } else {
-            s.push_str(v);
-        }
-        s.push('\n');
-    }
-    s
-}
-
-/// Build hash input bytes per canonical mode.
-fn hash_payload(doc: &ParsedDoc, opts: &InstructOptions) -> Vec<u8> {
-    let body_lf = normalize_lf(&doc.body_raw);
-    match opts.canonical {
-        CanonicalMode::BodyOnly => body_lf.into_bytes(),
-        CanonicalMode::Full => {
-            let map = fm_map(&doc.fm_lines);
-            if map.is_empty() {
-                body_lf.into_bytes()
-            } else {
-                let mut payload = canonical_fm_string(&map);
-                payload.push('\n');
-                payload.push_str(&body_lf);
-                payload.into_bytes()
-            }
-        }
-    }
-}
-
-fn compute_digest(doc: &ParsedDoc, opts: &InstructOptions) -> Digest {
-    let payload = hash_payload(doc, opts);
-    Digest::compute(opts.algorithm, &payload)
-}
-
-/// Drop reserved keys (and their blocks) from FM lines, preserving other keys' raw lines.
-fn strip_reserved_fm_lines(lines: &[String]) -> Vec<String> {
+/// Drop reserved keys (and their indented continuation blocks) from FM lines,
+/// preserving all other front-matter lines verbatim.
+fn strip_reserved_fm_lines(lines: &[String], seal_field: &str) -> Vec<String> {
     let mut out = Vec::new();
     let mut i = 0;
     while i < lines.len() {
         let trimmed = lines[i].trim();
         if let Some((k, _)) = trimmed.split_once(':') {
-            if is_reserved_fm_key(k.trim())
-                && !lines[i].starts_with(' ')
+            if !lines[i].starts_with(' ')
                 && !lines[i].starts_with('\t')
+                && is_reserved_fm_key(k.trim(), seal_field)
             {
                 i += 1;
                 while i < lines.len()
@@ -326,6 +231,31 @@ fn strip_reserved_fm_lines(lines: &[String]) -> Vec<String> {
     out
 }
 
+/// Build `instruct-v2` domain-separated hash input bytes per canonical mode.
+fn hash_payload(doc: &ParsedDoc, opts: &InstructOptions) -> Vec<u8> {
+    let body_lf = normalize_lf(&doc.body_raw);
+    match opts.canonical {
+        CanonicalMode::BodyOnly => format!("{INSTRUCT_V2_BODY_DOMAIN}\n{body_lf}").into_bytes(),
+        CanonicalMode::Full => {
+            let kept = strip_reserved_fm_lines(&doc.fm_lines, &opts.field);
+            if kept.iter().any(|l| !l.trim().is_empty()) {
+                format!(
+                    "{INSTRUCT_V2_DOMAIN}\nFM\n{}\nBODY\n{body_lf}",
+                    kept.join("\n")
+                )
+                .into_bytes()
+            } else {
+                format!("{INSTRUCT_V2_DOMAIN}\nBODY\n{body_lf}").into_bytes()
+            }
+        }
+    }
+}
+
+fn compute_digest(doc: &ParsedDoc, opts: &InstructOptions) -> Digest {
+    let payload = hash_payload(doc, opts);
+    Digest::compute(opts.algorithm, &payload)
+}
+
 /// Write seal (+ optional sig) into front matter; returns full file text.
 fn render_with_seal(
     doc: &ParsedDoc,
@@ -333,7 +263,10 @@ fn render_with_seal(
     digest: &Digest,
     sig_armor: Option<&str>,
 ) -> String {
-    let mut fm_lines = strip_reserved_fm_lines(&doc.fm_lines);
+    let mut fm_lines = strip_reserved_fm_lines(&doc.fm_lines, &opts.field);
+    if fm_lines.iter().all(|l| l.trim().is_empty()) {
+        fm_lines.clear();
+    }
     // Ensure seal then sig at end of FM (after other keys)
     fm_lines.push(format!("{}: \"{}\"", opts.field, digest.qualified()));
     if let Some(armor) = sig_armor {
@@ -369,13 +302,22 @@ pub fn seal_instruct_bytes(text: &str, opts: &InstructOptions) -> Result<(String
 
 /// Seal with optional GPG signature (git-aligned).
 pub fn seal_instruct_bytes_with(text: &str, opts: &SealOpts) -> Result<(String, Digest)> {
+    if opts.instruct.unicode_policy == UnicodePolicy::Fail {
+        let u = scan_suspicious_unicode(text);
+        if !u.is_empty() {
+            return Err(Error::InvalidFormat(format!(
+                "suspicious unicode: {}",
+                format_unicode_findings(&u)
+            )));
+        }
+    }
     let mut doc = parse_document(text);
     if !doc.had_front_matter {
         doc.had_front_matter = true;
         doc.fm_lines = Vec::new();
     }
     // Strip old seal/sig before hashing so re-seal is stable
-    doc.fm_lines = strip_reserved_fm_lines(&doc.fm_lines);
+    doc.fm_lines = strip_reserved_fm_lines(&doc.fm_lines, &opts.instruct.field);
     let digest = compute_digest(&doc, &opts.instruct);
     let sig = if opts.sign {
         Some(gpg::sign_digest(&digest.qualified(), &opts.gpg)?)
@@ -425,6 +367,12 @@ pub fn check_instruct_bytes_with(
     opts: &CheckOpts,
     path: Option<PathBuf>,
 ) -> CheckResult {
+    if opts.instruct.unicode_policy == UnicodePolicy::Fail {
+        let u = scan_suspicious_unicode(text);
+        if !u.is_empty() {
+            return CheckResult::suspicious_unicode(path, format_unicode_findings(&u));
+        }
+    }
     let doc = parse_document(text);
     if !doc.had_front_matter {
         let actual = compute_digest(&doc, &opts.instruct);
@@ -439,7 +387,6 @@ pub fn check_instruct_bytes_with(
         Some(Ok(expected)) => {
             let mut opts_use = opts.instruct.clone();
             opts_use.algorithm = expected.algorithm;
-            // Hash must ignore seal/sig — parse_document lines still contain them; fm_map skips reserved
             let actual = compute_digest(&doc, &opts_use);
             if actual.hex != expected.hex || actual.algorithm != expected.algorithm {
                 return CheckResult::mismatch(path, &expected, &actual);
@@ -510,8 +457,7 @@ pub fn unseal_instruct_bytes(text: &str, opts: &InstructOptions) -> String {
     if !doc.had_front_matter {
         return text.to_string();
     }
-    let fm_lines = strip_reserved_fm_lines(&doc.fm_lines);
-    let _ = opts;
+    let fm_lines = strip_reserved_fm_lines(&doc.fm_lines, &opts.field);
     if fm_lines.iter().all(|l| l.trim().is_empty()) {
         return doc.body_raw;
     }
@@ -543,18 +489,20 @@ mod tests {
             CheckStatus::MissingSignature => "missing_signature",
             CheckStatus::BadSignature => "bad_signature",
             CheckStatus::UntrustedKey => "untrusted_key",
+            CheckStatus::UnverifiedSignature => "unverified_signature",
+            CheckStatus::SuspiciousUnicode => "suspicious_unicode",
         }
     }
 
-    /// Frozen multi-language vectors — digests must match core FULL mode.
+    /// Frozen multi-language vectors — digests must match core FULL mode (instruct-v2).
     #[test]
-    fn official_vectors_instruct_v1() {
-        let path = crate::test_paths::monorepo_path("verify/vectors/instruct-v1.json");
+    fn official_vectors_instruct_v2() {
+        let path = crate::test_paths::monorepo_path("verify/vectors/instruct-v2.json");
         let raw =
             fs::read_to_string(&path).unwrap_or_else(|e| panic!("load {}: {e}", path.display()));
         let doc: serde_json::Value =
-            serde_json::from_str(&raw).expect("instruct-v1.json must be valid JSON");
-        assert_eq!(doc["spec"], "instruct-v1");
+            serde_json::from_str(&raw).expect("instruct-v2.json must be valid JSON");
+        assert_eq!(doc["spec"], "instruct-v2");
         assert_eq!(doc["canonical"], "full");
         assert_eq!(doc["algorithm"], "blake3");
 
@@ -563,6 +511,7 @@ mod tests {
             algorithm: Algorithm::Blake3,
             canonical: CanonicalMode::Full,
             auto_frontmatter: true,
+            unicode_policy: UnicodePolicy::Fail,
         };
 
         let cases = doc["cases"].as_array().expect("cases array");
@@ -627,7 +576,7 @@ mod tests {
         let tampered = sealed.replace("body", "evil");
         let check = check_instruct_bytes(&tampered, &opts);
         assert!(!check.ok);
-        assert_eq!(check.status, crate::CheckStatus::Mismatch);
+        assert_eq!(check.status, CheckStatus::Mismatch);
         assert!(check.expected.is_some());
         assert!(check.actual.is_some());
     }
@@ -640,7 +589,88 @@ mod tests {
         let tampered = sealed.replace("title: agents", "title: pwned");
         let check = check_instruct_bytes(&tampered, &opts);
         assert!(!check.ok);
-        assert_eq!(check.status, crate::CheckStatus::Mismatch);
+        assert_eq!(check.status, CheckStatus::Mismatch);
+    }
+
+    #[test]
+    fn yaml_list_tamper_fails() {
+        let opts = InstructOptions::default();
+        let src = "---\nglobs:\n  - \"*.ts\"\n  - \"*.tsx\"\n---\n# Rule\n";
+        let (sealed, _) = seal_instruct_bytes(src, &opts).unwrap();
+        assert!(check_instruct_bytes(&sealed, &opts).ok);
+        let tampered = sealed.replace("*.ts\"", "*.js\"");
+        let check = check_instruct_bytes(&tampered, &opts);
+        assert!(!check.ok);
+        assert_eq!(check.status, CheckStatus::Mismatch);
+    }
+
+    #[test]
+    fn yaml_nested_map_tamper_fails() {
+        let opts = InstructOptions::default();
+        let src = "---\ntools:\n  bash: false\n  read: true\n---\n# Skill\n";
+        let (sealed, _) = seal_instruct_bytes(src, &opts).unwrap();
+        assert!(check_instruct_bytes(&sealed, &opts).ok);
+        let tampered = sealed.replace("bash: false", "bash: true");
+        let check = check_instruct_bytes(&tampered, &opts);
+        assert!(!check.ok);
+        assert_eq!(check.status, CheckStatus::Mismatch);
+    }
+
+    #[test]
+    fn custom_seal_field_roundtrip() {
+        let opts = InstructOptions {
+            field: "my_seal".into(),
+            ..Default::default()
+        };
+        let src = "---\ntitle: custom\n---\n# Body\n";
+        let (once, d1) = seal_instruct_bytes(src, &opts).unwrap();
+        assert!(once.contains("my_seal: \"blake3:"));
+        let (twice, d2) = seal_instruct_bytes(&once, &opts).unwrap();
+        assert_eq!(d1, d2);
+        assert_eq!(once, twice);
+        let check = check_instruct_bytes(&twice, &opts);
+        assert!(check.ok, "{check:?}");
+        let unsealed = unseal_instruct_bytes(&twice, &opts);
+        assert!(!unsealed.contains("my_seal:"));
+        assert!(unsealed.contains("title: custom"));
+    }
+
+    #[test]
+    fn fm_with_embedded_dashes_preserves_body() {
+        let opts = InstructOptions::default();
+        let src = "---\ntitle: signed\nhashseal_sig: |\n  -----BEGIN PGP SIGNATURE-----\n  abc\n  -----END PGP SIGNATURE-----\n---\n# Body\n\nKeep me.\n";
+        let doc = parse_document(src);
+        assert!(doc.had_front_matter);
+        assert_eq!(doc.body_raw, "# Body\n\nKeep me.\n");
+        let (sealed, _) = seal_instruct_bytes(src, &opts).unwrap();
+        assert!(sealed.ends_with("---\n# Body\n\nKeep me.\n"));
+        assert!(check_instruct_bytes(&sealed, &opts).ok);
+    }
+
+    #[test]
+    fn fm_body_boundary_smuggling_changes_digest() {
+        let opts = InstructOptions::default();
+        let a = "---\na: 1\n---\nBODY\nb: 2\n";
+        let b = "---\na: 1\nb: 2\n---\n";
+        let (_, da) = seal_instruct_bytes(a, &opts).unwrap();
+        let (_, db) = seal_instruct_bytes(b, &opts).unwrap();
+        assert_ne!(da, db);
+    }
+
+    #[test]
+    fn suspicious_unicode_fails_by_default_and_respects_off_policy() {
+        let mut opts = InstructOptions::default();
+        let poisoned = "---\ntitle: ok\n---\n# Hi \u{202E}evil\n";
+        assert!(seal_instruct_bytes(poisoned, &opts).is_err());
+
+        opts.unicode_policy = UnicodePolicy::Off;
+        let (sealed, _) = seal_instruct_bytes(poisoned, &opts).unwrap();
+        assert!(check_instruct_bytes(&sealed, &opts).ok);
+
+        opts.unicode_policy = UnicodePolicy::Fail;
+        let check = check_instruct_bytes(&sealed, &opts);
+        assert!(!check.ok);
+        assert_eq!(check.status, CheckStatus::SuspiciousUnicode);
     }
 
     #[test]
@@ -651,7 +681,6 @@ mod tests {
         };
         let src = "---\ntitle: a\n---\n# Hi\n";
         let (sealed, _) = seal_instruct_bytes(src, &opts).unwrap();
-        // Change non-seal FM
         let lines: Vec<&str> = sealed.lines().collect();
         let mut out = String::new();
         for line in lines {
@@ -671,7 +700,7 @@ mod tests {
         let opts = InstructOptions::default();
         let check = check_instruct_bytes("# no seal\n", &opts);
         assert!(!check.ok);
-        assert_eq!(check.status, crate::CheckStatus::MissingSeal);
+        assert_eq!(check.status, CheckStatus::MissingSeal);
     }
 
     #[test]
@@ -680,7 +709,6 @@ mod tests {
         let lf = "# T\n\nline\n";
         let crlf = "# T\r\n\r\nline\r\n";
         let (_, d1) = seal_instruct_bytes(lf, &opts).unwrap();
-        // hash payload for unsealed docs: no FM → body only
         let doc_lf = parse_document(lf);
         let doc_crlf = parse_document(crlf);
         assert_eq!(
@@ -716,14 +744,7 @@ mod tests {
     #[test]
     fn sig_field_excluded_from_hash() {
         let opts = InstructOptions::default();
-        let (sealed, d1) = seal_instruct_bytes("# x\n\nbody\n", &opts).unwrap();
-        // Inject a fake sig block; digest check should still pass
-        let with_sig = sealed.replacen(
-            "---\n",
-            "---\nhashseal_sig: |\n  -----BEGIN PGP SIGNATURE-----\n  fakesig\n  -----END PGP SIGNATURE-----\n",
-            1,
-        );
-        // Our file starts with ---\nhashseal — restructure:
+        let (_, d1) = seal_instruct_bytes("# x\n\nbody\n", &opts).unwrap();
         let (sealed2, d2) = seal_instruct_bytes("# x\n\nbody\n", &opts).unwrap();
         assert_eq!(d1, d2);
         let doc = parse_document(&sealed2);
@@ -732,13 +753,15 @@ mod tests {
         lines.push("  -----BEGIN PGP SIGNATURE-----".into());
         lines.push("  fake".into());
         lines.push("  -----END PGP SIGNATURE-----".into());
+        lines.push("hashseal_sig_format: gpg".into());
+        lines.push("hashseal_signer: build-bot@hashseal.ai".into());
+        lines.push("hashseal_scope: AGENTS.md".into());
         let doc2 = ParsedDoc {
             fm_lines: lines,
             had_front_matter: true,
             body_raw: doc.body_raw.clone(),
         };
         assert_eq!(compute_digest(&doc, &opts), compute_digest(&doc2, &opts));
-        let _ = with_sig;
     }
 
     #[test]
@@ -756,6 +779,6 @@ mod tests {
             None,
         );
         assert!(!r.ok);
-        assert_eq!(r.status, crate::CheckStatus::MissingSignature);
+        assert_eq!(r.status, CheckStatus::MissingSignature);
     }
 }

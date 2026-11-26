@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:be4075435cb7db621a6bdff030099ee18552a06bf99b0c8abc9362840456588b"
+hashseal: "blake3:2ce2d637a25f3f1fb49c1b167601cfdd477101b9c12179be81604a0b5f0294b4"
 ---
 # HashSeal browser extension (Chrome MV3)
 

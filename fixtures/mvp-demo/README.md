@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:b5a885de3072e4d6b363d047e5a59cb8ed1b2a12e6dd9b11ba04a1ee08d1cf17"
+hashseal: "blake3:202c197e655e5bcd992f1bd4dd864657a649846ed19b76fdfb3fec645583a5a2"
 ---
 # HashSeal MVP demo fixture
 

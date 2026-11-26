@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:2dfa7ddd9905aef07ddf02c933d1b31b9e7089d0edfc022e57cf0944a1890862"
+hashseal: "blake3:493e92cdca6b22051757d6a7c171ca751b7c96272bae7fd3a84ea6405f8b6bda"
 ---
 # HashSeal skill — Cursor
 

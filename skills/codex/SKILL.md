@@ -3,7 +3,7 @@ name: hashseal-respect-seals
 description: >-
   HashSeal skill for Codex: sealed instruct files are authoritative; re-seal
   after edits; never strip seals; name every verify failure path.
-hashseal: "blake3:1fd46063c09b28c642b295a32e4fa5032f7f6f1024ebf19a57dcb39fea446c6a"
+hashseal: "blake3:7f6ae00f65b2635343966ff4fa5d803d0c8b1f59cfe20ab1cc48202ecde4fe9d"
 ---
 
 # HashSeal — respect sealed instructions (Codex)

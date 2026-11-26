@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:75b4e17952ab3a55bba92f720ddd7588c22c547bb76364d3193e7cf10369a90c"
+hashseal: "blake3:593bc685e72cea09ac2f0110a39c3c4da5daf766303eee6ea3e00bfeb82f764d"
 ---
 # @hashseal/npm-plugin
 

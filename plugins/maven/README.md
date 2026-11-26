@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:f5ac5bbb91ec451a7cb49849374215ad402e0d0368297620af3def1d41a6f89c"
+hashseal: "blake3:1b095d0326a0e9a2d0a131123736387c692d5142a9a35b6096cdddd0b2f37628"
 ---
 # hashseal-maven-plugin
 

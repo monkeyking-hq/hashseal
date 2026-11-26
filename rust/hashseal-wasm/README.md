@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:96df3ed73a26da84562f55d3b5580ca927098c2758f9beba6c4e3e078f3f9498"
+hashseal: "blake3:c4b9dbc158d1c1f57fa277eaeea14a5b94b77172796fe514b28d43f7eeadc3ae"
 ---
 # hashseal-wasm
 

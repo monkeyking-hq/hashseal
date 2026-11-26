@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:385376d28978c7a5155558a5a6b9048de5fe3d8b98f206d34e98fe1f7c92b21c"
+hashseal: "blake3:25ebafa805565d8519e217cc3fa45dd50ff37d04e361a3e8cbbdce38208c8317"
 ---
 # hashseal-verify (Java)
 

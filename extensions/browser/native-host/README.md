@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:e484781837fb2a81f080cd907b51215f1ff3553a99821682d131159309230a26"
+hashseal: "blake3:239971296c13cf5f4f7be5797bc96db2c0ddf8dc638cd84cc77e9182a83b5f62"
 ---
 # Optional native messaging host
 

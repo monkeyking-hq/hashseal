@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:d13425edc7f06267692cc81185456d2fd2c59843a2b49d70865d26d812b463b3"
+hashseal: "blake3:493963fd6f7524d2e6f343fa89b358e3435b39d38a6df01778f946f709091d97"
 ---
 # HashSeal CLI reference
 

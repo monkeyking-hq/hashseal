@@ -1,4 +1,4 @@
-//! Minimal recursive walk + glob-ish matching (no walkdir/globset).
+//! Minimal recursive walk + deterministic segment glob matching (no walkdir/globset).
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -27,14 +27,36 @@ pub fn is_skipped_dir_name(name: &str) -> bool {
     )
 }
 
-/// Collect files under root. `match_file(rel_posix) -> bool`.
+/// Entry yielded by [`walk_entries`], including symlink status.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WalkEntry {
+    pub path: PathBuf,
+    pub is_symlink: bool,
+    pub broken_symlink: bool,
+}
+
+/// Collect regular files under root. `match_file(rel_posix) -> bool`.
 pub fn walk_files(
     root: &Path,
     mut match_file: impl FnMut(&str) -> bool,
 ) -> std::io::Result<Vec<PathBuf>> {
+    let entries = walk_entries(root, &mut match_file)?;
+    Ok(entries
+        .into_iter()
+        .filter(|e| !e.is_symlink)
+        .map(|e| e.path)
+        .collect())
+}
+
+/// Collect regular files and matched file/broken symlinks under root.
+/// Does NOT recurse into directory symlinks.
+pub fn walk_entries(
+    root: &Path,
+    mut match_file: impl FnMut(&str) -> bool,
+) -> std::io::Result<Vec<WalkEntry>> {
     let mut out = Vec::new();
     walk_rec(root, root, &mut match_file, &mut out)?;
-    out.sort();
+    out.sort_by(|a, b| a.path.cmp(&b.path));
     Ok(out)
 }
 
@@ -42,7 +64,7 @@ fn walk_rec(
     root: &Path,
     dir: &Path,
     match_file: &mut impl FnMut(&str) -> bool,
-    out: &mut Vec<PathBuf>,
+    out: &mut Vec<WalkEntry>,
 ) -> std::io::Result<()> {
     let rd = match fs::read_dir(dir) {
         Ok(r) => r,
@@ -61,11 +83,33 @@ fn walk_rec(
                 continue;
             }
             walk_rec(root, &path, match_file, out)?;
+        } else if ft.is_symlink() {
+            let meta = fs::metadata(&path);
+            let is_dir_target = meta.as_ref().map(|m| m.is_dir()).unwrap_or(false);
+            if is_dir_target {
+                // Never recurse into directory symlinks
+                continue;
+            }
+            let broken = meta.is_err();
+            if let Ok(rel) = path.strip_prefix(root) {
+                let rel = rel.to_string_lossy().replace('\\', "/");
+                if match_file(&rel) {
+                    out.push(WalkEntry {
+                        path,
+                        is_symlink: true,
+                        broken_symlink: broken,
+                    });
+                }
+            }
         } else if ft.is_file() {
             if let Ok(rel) = path.strip_prefix(root) {
                 let rel = rel.to_string_lossy().replace('\\', "/");
                 if match_file(&rel) {
-                    out.push(path);
+                    out.push(WalkEntry {
+                        path,
+                        is_symlink: false,
+                        broken_symlink: false,
+                    });
                 }
             }
         }
@@ -73,80 +117,79 @@ fn walk_rec(
     Ok(())
 }
 
-/// Whether `path` is under directory `dir` (as a path segment prefix).
-///
-/// Examples: dir=`".claude"` matches `.claude/skills/x.md` and `pkg/.claude/CLAUDE.md`.
-fn under_dir(path: &str, dir: &str) -> bool {
-    path == dir || path.starts_with(&format!("{dir}/")) || path.contains(&format!("/{dir}/"))
+/// Match a single path segment against a wildcard pattern supporting `*` and `?`.
+fn match_segment(pat: &str, seg: &str) -> bool {
+    let p: Vec<char> = pat.chars().collect();
+    let s: Vec<char> = seg.chars().collect();
+    let (mut pi, mut si) = (0usize, 0usize);
+    let mut star_pi: Option<usize> = None;
+    let mut star_si = 0usize;
+
+    while si < s.len() {
+        if pi < p.len() && (p[pi] == '?' || p[pi] == s[si]) {
+            pi += 1;
+            si += 1;
+        } else if pi < p.len() && p[pi] == '*' {
+            star_pi = Some(pi);
+            star_si = si;
+            pi += 1;
+        } else if let Some(sp) = star_pi {
+            pi = sp + 1;
+            star_si += 1;
+            si = star_si;
+        } else {
+            return false;
+        }
+    }
+    while pi < p.len() && p[pi] == '*' {
+        pi += 1;
+    }
+    pi == p.len()
 }
 
-/// Very small glob: supports `**`, `*`, directory trees, and suffix patterns like `**/*.md`.
-///
-/// Supported forms (common for instruct includes):
-/// - `**/*` / `*`
-/// - exact path or basename (`AGENTS.md`, `.github/copilot-instructions.md`)
-/// - `**/name` exact file at any depth
-/// - `**/*.ext` / `*.ext`
-/// - `**/dir/**` any file under `dir`
-/// - `**/dir/**/*` same
-/// - `**/dir/**/*.ext` files with extension under `dir`
+/// Match pattern segments against path segments (`**` matches 0 or more segments).
+fn match_segments(pat_segs: &[&str], path_segs: &[&str]) -> bool {
+    let m = pat_segs.len();
+    let n = path_segs.len();
+    let mut dp = vec![vec![false; n + 1]; m + 1];
+    dp[0][0] = true;
+    for i in 1..=m {
+        if pat_segs[i - 1] == "**" {
+            dp[i][0] = dp[i - 1][0];
+        }
+    }
+    for i in 1..=m {
+        let p = pat_segs[i - 1];
+        for j in 1..=n {
+            if p == "**" {
+                dp[i][j] = dp[i - 1][j] || dp[i][j - 1];
+            } else if dp[i - 1][j - 1] && match_segment(p, path_segs[j - 1]) {
+                dp[i][j] = true;
+            }
+        }
+    }
+    dp[m][n]
+}
+
+/// Deterministic segment-based glob matcher supporting `**`, `*`, `?`, and basenames.
 pub fn glob_match(pattern: &str, path: &str) -> bool {
     let pattern = pattern.trim_start_matches("./");
     let path = path.trim_start_matches("./");
     if pattern == "**/*" || pattern == "*" {
         return true;
     }
+    if pattern.is_empty() {
+        return path.is_empty();
+    }
 
-    // Exact (no wildcards)
-    if !pattern.contains('*') && !pattern.contains('?') {
+    // Bare exact filename without slashes or wildcards matches at root or any subdir
+    if !pattern.contains('/') && !pattern.contains('*') && !pattern.contains('?') {
         return path == pattern || path.ends_with(&format!("/{pattern}"));
     }
 
-    if let Some(suf) = pattern.strip_prefix("**/") {
-        // **/dir/**/*.ext
-        if let Some((dir, ext)) = suf.split_once("/**/*.") {
-            if !dir.is_empty()
-                && !dir.contains('*')
-                && !dir.contains('?')
-                && !ext.contains('*')
-                && !ext.contains('?')
-            {
-                return under_dir(path, dir) && path.ends_with(&format!(".{ext}"));
-            }
-        }
-        // **/dir/** or **/dir/**/*
-        if let Some(dir) = suf
-            .strip_suffix("/**/*")
-            .or_else(|| suf.strip_suffix("/**"))
-        {
-            if !dir.is_empty() && !dir.contains('*') && !dir.contains('?') {
-                return under_dir(path, dir);
-            }
-        }
-        // **/*.ext
-        if let Some(ext) = suf.strip_prefix("*.") {
-            if !ext.contains('*') && !ext.contains('?') {
-                return path.ends_with(&format!(".{ext}"));
-            }
-        }
-        // **/exact-file (no wildcards in suffix)
-        if !suf.contains('*') && !suf.contains('?') {
-            return path == suf || path.ends_with(&format!("/{suf}"));
-        }
-    }
-
-    if let Some(ext) = pattern.strip_prefix("*.") {
-        if !ext.contains('*') && !ext.contains('?') {
-            return path.ends_with(&format!(".{ext}"));
-        }
-    }
-
-    // naive fallback: strip ** / * and require remaining fragment
-    let stripped = pattern.replace("**/", "").replace('*', "");
-    if !stripped.is_empty() {
-        return path.contains(&stripped) || path.ends_with(&stripped);
-    }
-    path == pattern
+    let pat_segs: Vec<&str> = pattern.split('/').filter(|s| !s.is_empty()).collect();
+    let path_segs: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
+    match_segments(&pat_segs, &path_segs)
 }
 
 pub fn any_glob(patterns: &[String], path: &str) -> bool {
@@ -197,6 +240,18 @@ mod tests {
     }
 
     #[test]
+    fn glob_segment_precision() {
+        assert!(glob_match("docs/*.md", "docs/a.md"));
+        assert!(!glob_match("docs/*.md", "docs/sub/a.md"));
+        assert!(!glob_match("docs/*.md", "other/docs/a.md"));
+        assert!(glob_match("a/**/b/*.txt", "a/b/c.txt"));
+        assert!(glob_match("a/**/b/*.txt", "a/x/y/b/c.txt"));
+        assert!(!glob_match("a/**/b/*.txt", "a/x/y/b/sub/c.txt"));
+        assert!(glob_match("**/foo?.md", "dir/foo1.md"));
+        assert!(!glob_match("**/foo?.md", "dir/foo12.md"));
+    }
+
+    #[test]
     fn glob_mdc_ext() {
         assert!(glob_match("**/*.mdc", ".cursor/rules/a.mdc"));
         assert!(!glob_match("**/*.mdc", "a.md"));
@@ -215,11 +270,9 @@ mod tests {
     fn walk_does_not_descend_into_worktrees() {
         let dir = tempfile::tempdir().unwrap();
         let root = dir.path();
-        // Real instruct path under .claude (should be found)
         let skill = root.join(".claude").join("skills").join("x");
         fs::create_dir_all(&skill).unwrap();
         fs::write(skill.join("SKILL.md"), "# skill\n").unwrap();
-        // Nested worktree checkout (must not be walked)
         let wt = root
             .join(".claude")
             .join("worktrees")
@@ -229,7 +282,6 @@ mod tests {
             .join("nested");
         fs::create_dir_all(&wt).unwrap();
         fs::write(wt.join("SKILL.md"), "# nested should be skipped\n").unwrap();
-        // Root .worktrees container
         let root_wt = root.join(".worktrees").join("other").join("pkg");
         fs::create_dir_all(&root_wt).unwrap();
         fs::write(root_wt.join("AGENTS.md"), "# skip\n").unwrap();

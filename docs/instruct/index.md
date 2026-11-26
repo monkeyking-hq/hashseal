@@ -2,7 +2,7 @@
 layout: default
 title: Agent instruction file integrity seal
 permalink: /instruct/
-hashseal: "blake3:2b8429e5784cfe6f5245a133006447158885f1364cfc90f272225931db845f08"
+hashseal: "blake3:99e4ed772cf19947c9a7b7cd99980c13c1cfd29f43f351bf1f18d05307955ad6"
 ---
 
 # Agent instruction file integrity seal

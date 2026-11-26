@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:06db60e2d8a17eed79ae50889d8dfa9e63a60859e4c015962e4712fed68aa231"
+hashseal: "blake3:859ceb323f1ac8bd175c04f09711686d964afb5e7914cc0c22bbd174ac40143d"
 ---
 # Installing HashSeal binaries
 
