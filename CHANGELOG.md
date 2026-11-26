@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.4.0] - 2026-11-26
+
+### Added
+- Frozen `verify/vectors/signing-v2.json` (5 SSHSIG cases, cross-checked by Rust, JS, Python, and Go).
+- Ported `instruct-v2`, suspicious Unicode checks, and zero-dep in-process `SSHSIG` Ed25519 verification to Tier-1 SDKs (`verify/js`, `verify/python`, `verify/go`).
+- Added `wasm-bindgen` exports (`check_text_json`, `version`) to `rust/hashseal-wasm`.
+- Expanded `.gitea/workflows/ci.yml` to run Rust (`--release`) plus JS, Python, and Go SDK test suites.
+
+### Changed
+- Rebuilt `extensions/browser/lib/hashseal-verify.browser.js` and updated browser extension samples to `instruct-v2`.
+
+### Removed
+- Pruned dropped surfaces: `plugins/python`, `plugins/maven`, `plugins/gradle`, `java/`, `verify/java`, `verify/ruby`, `verify/dotnet`.
+
 ## [0.3.0] - 2026-11-26
 
 ### Added

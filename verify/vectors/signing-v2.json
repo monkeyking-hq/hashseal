@@ -1,0 +1,70 @@
+{
+  "version": 2,
+  "spec": "signing-v2",
+  "namespace": "hashseal",
+  "allowed_signers": "test-signer@hashseal.invalid ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAII2SjQiw871kGHdLb19Or6A2c795x1VwZixNcVncg/uY test-signer@hashseal.invalid\n",
+  "cases": [
+    {
+      "id": "ssh_path_bound_valid",
+      "description": "Valid path-bound SSHSIG at matching AGENTS.md path",
+      "text": "---\ntitle: rules\nhashseal: \"blake3:a2784f5a9575470af1cba623b70a747dd31ae57236ae822034197f17db41effe\"\nhashseal_sig_format: ssh\nhashseal_scope: \"AGENTS.md\"\nhashseal_sig: |\n  -----BEGIN SSH SIGNATURE-----\n  U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgjZKNCLDzvWQYd0tvX06voDZzv3\n  nHVXBmLE1xWdyD+5gAAAAIaGFzaHNlYWwAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVk\n  MjU1MTkAAABAxMUWT837S3CntqVZDlF/Ucw4yY/QqBKFJnkkVxth7mDo9B8kyP6QhxeG5Z\n  yGhKWtKw49kkYwcu+Cr3zpiUj7BA==\n  -----END SSH SIGNATURE-----\n---\n# Agent Rules\n\nFollow policy.\n",
+      "path": "AGENTS.md",
+      "allowed_signers": "test-signer@hashseal.invalid ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAII2SjQiw871kGHdLb19Or6A2c795x1VwZixNcVncg/uY test-signer@hashseal.invalid\n",
+      "require_signature": true,
+      "expect": {
+        "ok": true,
+        "status": "valid",
+        "signer": "test-signer@hashseal.invalid"
+      }
+    },
+    {
+      "id": "ssh_path_replay_rejected",
+      "description": "Path-bound SSHSIG copied to CLAUDE.md fails scope binding",
+      "text": "---\ntitle: rules\nhashseal: \"blake3:a2784f5a9575470af1cba623b70a747dd31ae57236ae822034197f17db41effe\"\nhashseal_sig_format: ssh\nhashseal_scope: \"AGENTS.md\"\nhashseal_sig: |\n  -----BEGIN SSH SIGNATURE-----\n  U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgjZKNCLDzvWQYd0tvX06voDZzv3\n  nHVXBmLE1xWdyD+5gAAAAIaGFzaHNlYWwAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVk\n  MjU1MTkAAABAxMUWT837S3CntqVZDlF/Ucw4yY/QqBKFJnkkVxth7mDo9B8kyP6QhxeG5Z\n  yGhKWtKw49kkYwcu+Cr3zpiUj7BA==\n  -----END SSH SIGNATURE-----\n---\n# Agent Rules\n\nFollow policy.\n",
+      "path": "CLAUDE.md",
+      "allowed_signers": "test-signer@hashseal.invalid ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAII2SjQiw871kGHdLb19Or6A2c795x1VwZixNcVncg/uY test-signer@hashseal.invalid\n",
+      "require_signature": true,
+      "expect": {
+        "ok": false,
+        "status": "bad_signature"
+      }
+    },
+    {
+      "id": "ssh_portable_valid",
+      "description": "Portable SSHSIG (scope=*) verifies at any path",
+      "text": "---\nhashseal: \"blake3:30756910ee7eab62236ef76b6abc9ef8d77865942ccd9ef19607a9f420bae559\"\nhashseal_sig_format: ssh\nhashseal_scope: \"*\"\nhashseal_sig: |\n  -----BEGIN SSH SIGNATURE-----\n  U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgjZKNCLDzvWQYd0tvX06voDZzv3\n  nHVXBmLE1xWdyD+5gAAAAIaGFzaHNlYWwAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVk\n  MjU1MTkAAABApBx4AD1JeItT6a9aYXx5QbQnZBR9pGzroMsqYykOx1WBhZhv9h5uq4l3oA\n  mPxE2I47e9vbba60UlpHZ3/b14Bg==\n  -----END SSH SIGNATURE-----\n---\n# Skill\n\nPortable skill.\n",
+      "path": "skills/foo/SKILL.md",
+      "allowed_signers": "test-signer@hashseal.invalid ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAII2SjQiw871kGHdLb19Or6A2c795x1VwZixNcVncg/uY test-signer@hashseal.invalid\n",
+      "require_signature": true,
+      "expect": {
+        "ok": true,
+        "status": "valid",
+        "signer": "test-signer@hashseal.invalid"
+      }
+    },
+    {
+      "id": "ssh_tampered_sig_rejected",
+      "description": "Corrupted SSHSIG signature fails verification",
+      "text": "---\ntitle: rules\nhashseal: \"blake3:a2784f5a9575470af1cba623b70a747dd31ae57236ae822034197f17db41effe\"\nhashseal_sig_format: ssh\nhashseal_scope: \"AGENTS.md\"\nhashseal_sig: |\n  -----BEGIN SSH SIGNATURE-----\n  U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgjZKNCLDzvWQYd0tvX06voDZzv3\n  nHVXBmLE1xWdyD+5gAAAAIaGFzaHNlYWwAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVk\n  MjU1MTkAAABAxMUWT837S3CntqVZDlF/Ucw4yY/QqBKFJnkkVxth7mDo9B8kyP6QhxeG5Z\n  AGhKWtKw49kkYwcu+Cr3zpiUj7BA==\n  -----END SSH SIGNATURE-----\n---\n# Agent Rules\n\nFollow policy.\n",
+      "path": "AGENTS.md",
+      "allowed_signers": "test-signer@hashseal.invalid ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAII2SjQiw871kGHdLb19Or6A2c795x1VwZixNcVncg/uY test-signer@hashseal.invalid\n",
+      "require_signature": true,
+      "expect": {
+        "ok": false,
+        "status": "bad_signature"
+      }
+    },
+    {
+      "id": "ssh_untrusted_signer_rejected",
+      "description": "Valid SSHSIG whose public key is absent from allowed_signers returns untrusted_key",
+      "text": "---\ntitle: rules\nhashseal: \"blake3:a2784f5a9575470af1cba623b70a747dd31ae57236ae822034197f17db41effe\"\nhashseal_sig_format: ssh\nhashseal_scope: \"AGENTS.md\"\nhashseal_sig: |\n  -----BEGIN SSH SIGNATURE-----\n  U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgjZKNCLDzvWQYd0tvX06voDZzv3\n  nHVXBmLE1xWdyD+5gAAAAIaGFzaHNlYWwAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVk\n  MjU1MTkAAABAxMUWT837S3CntqVZDlF/Ucw4yY/QqBKFJnkkVxth7mDo9B8kyP6QhxeG5Z\n  yGhKWtKw49kkYwcu+Cr3zpiUj7BA==\n  -----END SSH SIGNATURE-----\n---\n# Agent Rules\n\nFollow policy.\n",
+      "path": "AGENTS.md",
+      "allowed_signers": "other@hashseal.invalid ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMockOtherKeyForUntrustedTestOnly0000000000\n",
+      "require_signature": true,
+      "expect": {
+        "ok": false,
+        "status": "untrusted_key"
+      }
+    }
+  ]
+}

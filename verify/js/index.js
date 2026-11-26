@@ -8,10 +8,13 @@
 
 const {
   checkDocumentText,
+  scanSuspiciousUnicode,
   blake3Hex,
   blake3Digest,
   SEAL_FIELD,
 } = require("./check.js");
+
+const { verifySshSig, parseAllowedSigners } = require("./sshsig.js");
 
 const {
   hashTreeFileContent,
@@ -21,6 +24,9 @@ const {
 
 module.exports = {
   checkDocumentText,
+  scanSuspiciousUnicode,
+  verifySshSig,
+  parseAllowedSigners,
   blake3Hex,
   blake3Digest,
   SEAL_FIELD,

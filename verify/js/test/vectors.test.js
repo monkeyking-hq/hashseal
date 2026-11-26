@@ -15,11 +15,11 @@ const vectorsPath = path.join(
   "..",
   "..",
   "vectors",
-  "instruct-v1.json"
+  "instruct-v2.json"
 );
 
 const doc = JSON.parse(fs.readFileSync(vectorsPath, "utf8"));
-if (doc.spec !== "instruct-v1") {
+if (doc.spec !== "instruct-v2") {
   fail(`unexpected spec ${doc.spec}`);
 }
 

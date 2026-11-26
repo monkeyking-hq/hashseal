@@ -5,7 +5,7 @@
 "use strict";
 
 const SAMPLE_VALID = `---
-hashseal: "blake3:25280e93176b8b5ae3f4c2dd4b8fef7a20c4a626ea8dfd933b0e77b3a240dccb"
+hashseal: "blake3:08a635fc990e9aedb6b0690a5feb7147a8b2673027e5635e1849fbe581d271f6"
 ---
 # Hello
 
@@ -14,7 +14,7 @@ Agent rules.
 
 const SAMPLE_MISMATCH = `---
 title: demo
-hashseal: "blake3:97bc50a158eeb098cd9ef101a8106b4dd3ae1585e16486d3e8761a54421e5fda"
+hashseal: "blake3:0000000000000000000000000000000000000000000000000000000000000000"
 ---
 # Demo
 

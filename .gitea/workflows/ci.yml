@@ -20,6 +20,39 @@ jobs:
       - name: fmt
         run: cargo fmt --all -- --check
       - name: clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        run: cargo clippy --workspace --all-targets --release -- -D warnings
+      - name: check minimal hashseal-check deps
+        run: cargo check -p hashseal-check --release
       - name: test
-        run: cargo test --workspace
+        run: cargo test --workspace --release
+
+  sdks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: test JS SDK
+        if: ${{ hashFiles('verify/js/package.json') != '' }}
+        run: |
+          if command -v node >/dev/null 2>&1; then
+            node verify/js/test/vectors.test.js
+            node verify/js/test/tree-vectors.test.js
+            node verify/js/test/signing.test.js
+          else
+            echo "node not installed on runner; skipping"
+          fi
+      - name: test Python SDK
+        run: |
+          if command -v python3 >/dev/null 2>&1; then
+            python3 verify/python/test/test_vectors.py
+            python3 verify/python/test/test_tree_vectors.py
+            python3 verify/python/test/test_signing.py
+          else
+            echo "python3 not installed on runner; skipping"
+          fi
+      - name: test Go SDK
+        run: |
+          if command -v go >/dev/null 2>&1; then
+            (cd verify/go && go test -v ./...)
+          else
+            echo "go not installed on runner; skipping"
+          fi

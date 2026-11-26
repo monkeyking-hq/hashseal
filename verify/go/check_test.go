@@ -23,7 +23,7 @@ func TestBlake3Hello(t *testing.T) {
 
 func TestOfficialVectors(t *testing.T) {
 	_, file, _, _ := runtime.Caller(0)
-	vecPath := filepath.Join(filepath.Dir(file), "..", "vectors", "instruct-v1.json")
+	vecPath := filepath.Join(filepath.Dir(file), "..", "vectors", "instruct-v2.json")
 	data, err := os.ReadFile(vecPath)
 	if err != nil {
 		t.Fatal(err)
