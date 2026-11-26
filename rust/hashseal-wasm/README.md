@@ -1,11 +1,9 @@
 ---
-hashseal: "blake3:c4b9dbc158d1c1f57fa277eaeea14a5b94b77172796fe514b28d43f7eeadc3ae"
+hashseal: "blake3:e7afa025cbb1931acb407843ea8b295cd8e3af368fbe14743fb9641658093260"
 ---
 # hashseal-wasm
 
-Mandatory WASM verify surface for IDE and browser developer-consumer tools.
-
-Native `rlib` builds today for CI; `wasm32` + `wasm-bindgen` packaging follows.
+WASM verify surface for IDE and browser developer-consumer tools, exposing `wasm-bindgen` exports (`check_text_json`, `version`) on top of `hashseal-core/check`.
 
 ```text
 Copyright (c) 2026 MonkeyKing.dev

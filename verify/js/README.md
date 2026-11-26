@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:72fec3bce2cd58c69092b573e8d4188381ce245584b6be325366c95419ba68a6"
+hashseal: "blake3:d5bb1e48c096a689ece45da98c2feba3f70daefcf03d4ac88ff96f2f6ffb2d8b"
 ---
 # @hashseal/verify (JavaScript)
 
@@ -25,13 +25,20 @@ const {
 } = require("@hashseal/verify");
 // or: require("./index.js")
 
-const result = checkDocumentText(markdownText);
+const result = checkDocumentText(markdownText, {
+  // Optional:
+  // allowedSigners: fs.readFileSync(".hashseal/allowed_signers", "utf8"),
+  // path: "AGENTS.md",
+  // requireSignature: true,
+  // unicodePolicy: "fail", // "fail" | "warn" | "off"
+});
 // {
 //   ok: boolean,
-//   status: "valid" | "mismatch" | "missing_seal" | "invalid_format",
+//   status: "valid" | "mismatch" | "missing_seal" | "invalid_format" | "suspicious_unicode" | "missing_signature" | "bad_signature" | "untrusted_key" | "unverified_signature",
 //   algorithm: "blake3" | null,
 //   expected: "blake3:…" | null,
 //   actual: "blake3:…" | null,
+//   signer: string | null,
 //   message: string | null
 // }
 
@@ -44,7 +51,7 @@ const tree = verifyTreeInMemory(
 // { ok, checked, findings: [{ path, status, expected, actual }] }
 ```
 
-Instruct: digest check only (FULL canonical mode). GPG is not verified here.  
+Instruct: `instruct-v2` lossless raw-FM digest + Unicode smuggling check + in-process Ed25519 `SSHSIG` verification (`sshsig.js`).  
 Tree: LF policy for text extensions; every non-OK path is listed in `findings`.
 
 ## Tests
@@ -52,11 +59,12 @@ Tree: LF policy for text extensions; every non-OK path is listed in `findings`.
 ```bash
 npm test
 # or:
-node test/vectors.test.js        # instruct-v1 (16 cases)
-node test/tree-vectors.test.js   # tree-v1
+node test/vectors.test.js        # instruct-v2 (19 cases)
+node test/tree-vectors.test.js   # tree-v1 (12 cases)
+node test/signing.test.js        # signing-v2 (5 SSHSIG cases)
 ```
 
-Uses frozen vectors at `../vectors/instruct-v1.json` and `../vectors/tree-v1.json`.
+Uses frozen vectors at `../vectors/instruct-v2.json`, `../vectors/signing-v2.json`, and `../vectors/tree-v1.json`.
 
 ## Vendor
 

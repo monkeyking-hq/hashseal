@@ -1,5 +1,5 @@
-// Run official instruct-v1 vectors.
-// Usage (from verify/go): go run ./test/
+// Run official instruct-v2 vectors.
+// Usage (from verify/go): go run ./test/run_vectors.go
 //
 // Copyright (c) 2026 MonkeyKing.dev
 package main
@@ -37,7 +37,7 @@ type vectorDoc struct {
 
 func main() {
 	_, thisFile, _, _ := runtime.Caller(0)
-	vectorsPath := filepath.Join(filepath.Dir(thisFile), "..", "..", "vectors", "instruct-v1.json")
+	vectorsPath := filepath.Join(filepath.Dir(thisFile), "..", "..", "vectors", "instruct-v2.json")
 	raw, err := os.ReadFile(vectorsPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "read vectors: %v\n", err)
@@ -48,7 +48,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "parse vectors: %v\n", err)
 		os.Exit(1)
 	}
-	if doc.Spec != "instruct-v1" {
+	if doc.Spec != "instruct-v2" {
 		fmt.Fprintf(os.Stderr, "unexpected spec %s\n", doc.Spec)
 		os.Exit(1)
 	}

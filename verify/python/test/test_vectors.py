@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Run official instruct-v1 vectors against check_document_text.
+Run official instruct-v2 vectors against check_document_text.
 Usage: python test/test_vectors.py
 Zero pip deps (stdlib only).
 """
