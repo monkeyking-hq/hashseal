@@ -1,8 +1,8 @@
 {
   "name": "hashseal",
   "displayName": "HashSeal",
-  "description": "Seal and check instruction files / trees via the hashseal CLI (PATH or HASHSEAL_BIN).",
-  "version": "0.1.0",
+  "description": "Seal and verify AI instruction files with inline diagnostics and status bar indicator.",
+  "version": "0.5.0",
   "publisher": "hashseal",
   "license": "MIT",
   "engines": {
@@ -12,9 +12,7 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:hashseal.checkWorkspace",
-    "onCommand:hashseal.checkActiveFile",
-    "onCommand:hashseal.sealInstructWorkspace"
+    "onStartupFinished"
   ],
   "main": "./extension.js",
   "contributes": {
@@ -25,7 +23,7 @@
       },
       {
         "command": "hashseal.checkActiveFile",
-        "title": "HashSeal: Check Active File (document text)"
+        "title": "HashSeal: Check Active File"
       },
       {
         "command": "hashseal.sealInstructWorkspace",
@@ -43,17 +41,27 @@
         "hashseal.checkBin": {
           "type": "string",
           "default": "",
-          "description": "Absolute path to hashseal-check. Empty = HASHSEAL_CHECK_BIN env, else hashseal-check on PATH. Used when preferCheckBinary is true."
+          "description": "Absolute path to hashseal-check. Empty = HASHSEAL_CHECK_BIN env, else hashseal-check on PATH."
         },
         "hashseal.preferCheckBinary": {
           "type": "boolean",
+          "default": false,
+          "description": "Prefer tiny hashseal-check (plain text) over JSON diagnostics."
+        },
+        "hashseal.checkOnSave": {
+          "type": "boolean",
           "default": true,
-          "description": "Prefer tiny hashseal-check for workspace check when available."
+          "description": "Automatically check instruction files on save."
+        },
+        "hashseal.requireSignature": {
+          "type": "boolean",
+          "default": false,
+          "description": "Require cryptographic signatures when checking."
         }
       }
     }
   },
   "scripts": {
-    "lint": "node -e \"require('./extension.js'); console.log('ok')\""
+    "lint": "node -c extension.js"
   }
 }

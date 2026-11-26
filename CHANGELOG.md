@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.5.0] - 2026-11-26
+
+### Added
+- `hashseal init` subcommand (`--git-hooks`, `--claude-hooks`, `--lock`, `--sign`) to bootstrap `.hashseal.json`, `.hashseal/allowed_signers`, git pre-commit hooks, Claude Code `SessionStart`/`PreToolUse` hooks, and `.hashseal.lock`.
+- Integration test `rust/hashseal/tests/cli_init.rs`.
+- Reusable `.pre-commit-hooks.yaml` and composite `action/action.yml` for PR/CI enforcement.
+
+### Changed
+- Upgraded VS Code extension (`extensions/vscode` `0.5.0`) with `DiagnosticCollection` error squiggles, `StatusBarItem` indicator, `checkOnSave`, and true single-file `checkActiveFile`.
+- Updated `skills/*/SKILL.md` so agents never overwrite human-signed (`hashseal_sig`) instruction files and understand `SUSPICIOUS_UNICODE`, `.hashseal.lock`, and `--diff`.
+
 ## [0.4.0] - 2026-11-26
 
 ### Added

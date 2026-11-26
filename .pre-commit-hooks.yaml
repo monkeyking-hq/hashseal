@@ -1,0 +1,15 @@
+- id: hashseal-check
+  name: HashSeal instruct integrity check
+  description: Verify sealed AI instruction files (AGENTS.md, CLAUDE.md, SKILL.md, ...) and check for Unicode smuggling.
+  entry: hashseal check --root .
+  language: system
+  pass_filenames: false
+  always_run: true
+
+- id: hashseal-check-signed
+  name: HashSeal signed instruct integrity check
+  description: Require cryptographic signatures on all sealed AI instruction files.
+  entry: hashseal check --root . --require-signature
+  language: system
+  pass_filenames: false
+  always_run: true
