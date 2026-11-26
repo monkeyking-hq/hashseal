@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:7db3730e2b8038e61d451fcdec430f1339d3724f6d614a80f668d448d4a8f83d"
+hashseal: "blake3:d3b7fc28ae4be21fe7b9132ca572ba6ea9f6f0242b845c8a95cc8bd245fa1234"
 ---
 # hashseal-verify (Python)
 
@@ -30,18 +30,26 @@ from check import check_document_text
 ```python
 from check import check_document_text
 
-result = check_document_text(markdown_text)
+result = check_document_text(
+    markdown_text,
+    # Optional:
+    # allowed_signers=open(".hashseal/allowed_signers", encoding="utf-8").read(),
+    # path="AGENTS.md",
+    # require_signature=True,
+    # unicode_policy="fail",  # "fail" | "warn" | "off"
+)
 # {
 #   "ok": bool,
-#   "status": "valid" | "mismatch" | "missing_seal" | "invalid_format",
+#   "status": "valid" | "mismatch" | "missing_seal" | "invalid_format" | "suspicious_unicode" | "missing_signature" | "bad_signature" | "untrusted_key" | "unverified_signature",
 #   "algorithm": "blake3" | None,
 #   "expected": "blake3:…" | None,
 #   "actual": "blake3:…" | None,
+#   "signer": str | None,
 #   "message": str | None,
 # }
 ```
 
-Digest check only (FULL canonical mode). GPG signature verification is not performed here.
+Supports `instruct-v2` lossless raw-FM digests, Unicode smuggling checks, and pure-Python Ed25519 `SSHSIG` verification (`sshsig.py` + `vendor/ed25519.py`).
 
 ### Tree (in-memory)
 
@@ -61,11 +69,12 @@ r = verify_tree_in_memory(
 ## Tests
 
 ```bash
-python test/test_vectors.py
-python test/test_tree_vectors.py
+python3 test/test_vectors.py       # instruct-v2 (19 cases)
+python3 test/test_tree_vectors.py  # tree-v1 (12 cases)
+python3 test/test_signing.py       # signing-v2 (5 SSHSIG cases)
 ```
 
-Uses frozen vectors at `../vectors/instruct-v1.json` and `../vectors/tree-v1.json`.
+Uses frozen vectors at `../vectors/instruct-v2.json`, `../vectors/signing-v2.json`, and `../vectors/tree-v1.json`.
 
 ## Vendor
 

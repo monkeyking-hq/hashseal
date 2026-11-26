@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:45d0eb9d1543a96592d2e3adfdb78a2623a86eab96e6e65f65e0b92a3f2f39b9"
+hashseal: "blake3:dc12eada2f150d43abcd1b463fc9c176e092344e8bf8de721598150e7f97ab2d"
 ---
 # Official HashSeal test vectors
 
@@ -108,10 +108,8 @@ All Tier-1 SDKs pass **19** cases from `instruct-v2.json`, **5** cases from `sig
 | SDK | Tree vectors |
 |-----|----------------|
 | `verify/js` | `tree.js` — `hashTreeFileContent` / `verifyTreeInMemory`; `node test/tree-vectors.test.js` (**12**/12) |
-| `verify/python` | `tree.py`; `python test/test_tree_vectors.py` (**12**/12) |
-| `verify/go` | `tree.go`; `go test .` → `TestOfficialTreeVectors` (**12**/12) |
-| `verify/java` | `Tree.java`; `java -cp out RunTreeVectors` (**12**/12) |
-| Ruby / .NET | Optional later; digests frozen in JSON |
+| `verify/python` | `tree.py`; `python3 test/test_tree_vectors.py` (**12**/12) |
+| `verify/go` | `tree.go`; `go test ./...` → `TestOfficialTreeVectors` (**12**/12) |
 
 ### Non-goals for tree-v1
 

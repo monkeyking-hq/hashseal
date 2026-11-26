@@ -1,72 +1,28 @@
 ---
-hashseal: "blake3:9180c507654e55ea1db6126e643d33d746ceaed0deb7124cbcaa6cd78d1450b0"
+hashseal: "blake3:b67e1ad0e4fd001b33faa5eacea9492a879217b5ee6d1437153211eb4cd9b81c"
 ---
 # HashSeal for VS Code
 
-Minimal extension that runs **`hashseal`** / **`hashseal-check`** on the workspace.
+VS Code extension (`v0.6.1`) providing inline diagnostics, status bar indicator, check-on-save, and single-file checking via the **`hashseal`** CLI.
 
 **Signed, Sealed, Delivered - I'm Yours.**
 
-## Requirements
+## Features
 
-- VS Code 1.85+
-- HashSeal CLI on **PATH**, or configure:
+- **`DiagnosticCollection` ("hashseal")**: maps every non-OK finding (`MISMATCH`, `SUSPICIOUS_UNICODE`, `BAD_SIGNATURE`, `UNVERIFIED_SIGNATURE`, etc.) directly onto the affected file.
+- **Status bar indicator**: displays `HashSeal: N OK` or `HashSeal: N issue(s)` (click to re-run workspace check).
+- **Check on save**: automatically checks instruction/Markdown files on save (`hashseal.checkOnSave: true`).
+- **Single-file check**: `HashSeal: Check Active File` checks only the active document (`hashseal check --format json --root <root> <file>`).
 
-| Setting / env | Purpose |
-|---------------|---------|
-| `hashseal.bin` / `HASHSEAL_BIN` | Full CLI |
-| `hashseal.checkBin` / `HASHSEAL_CHECK_BIN` | Tiny check binary |
-| `hashseal.preferCheckBinary` | Default `true` — workspace check uses `hashseal-check` |
+## Configuration
 
-Build from monorepo:
-
-```bash
-cargo build -p hashseal --release
-cargo build -p hashseal-check --release
-# add target/release to PATH
-```
-
-See [`docs/install.md`](../../docs/install.md).
-
-## Commands
-
-| Command | Action |
-|---------|--------|
-| **HashSeal: Check Workspace** | `hashseal-check --root <workspace>` (or `hashseal check`) |
-| **HashSeal: Check Active File** | Notes active path, then workspace check (CLI lists every non-OK path) |
-| **HashSeal: Seal Instruct (Workspace)** | `hashseal seal --instruct --root <workspace>` |
-
-Output appears in the **HashSeal** output channel.
-
-## F5 debug (Extension Development Host)
-
-1. Open this folder (`extensions/vscode`) **or** the monorepo root in VS Code.
-2. Ensure `hashseal` / `hashseal-check` are on PATH in the environment that launches VS Code.
-3. Run **Developer: Install Extension from Location…** and pick `extensions/vscode`,  
-   **or** create a launch config (below) and press **F5**.
-
-### Optional `.vscode/launch.json` (in monorepo root)
-
-```json
-{
-  "version": "0.2.0",
-  "configurations": [
-    {
-      "name": "HashSeal Extension",
-      "type": "extensionHost",
-      "request": "launch",
-      "args": ["--extensionDevelopmentPath=${workspaceFolder}/extensions/vscode"]
-    }
-  ]
-}
-```
-
-No `npm install` required — **zero** runtime dependencies (`extension.js` uses Node built-ins + VS Code API only).
-
-## Notes
-
-- WASM in-process verify is deferred; this skeleton always shells out.
-- Not published to the Marketplace from agent builds unless requested.
+| Setting / env | Default | Purpose |
+|---|---|---|
+| `hashseal.bin` / `HASHSEAL_BIN` | `hashseal` on `PATH` | Full CLI binary |
+| `hashseal.checkBin` / `HASHSEAL_CHECK_BIN` | `hashseal-check` on `PATH` | Tiny check binary |
+| `hashseal.preferCheckBinary` | `false` | Prefer plain-text `hashseal-check` over JSON diagnostics |
+| `hashseal.checkOnSave` | `true` | Automatically check candidate files on save |
+| `hashseal.requireSignature` | `false` | Pass `--require-signature` during checks |
 
 ```text
 Copyright (c) 2026 MonkeyKing.dev

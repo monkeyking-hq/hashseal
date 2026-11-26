@@ -1,9 +1,9 @@
 ---
-hashseal: "blake3:004c3edc20cf0b6717659595d503720cf29793dc0d32cf580ba38566e865e1a7"
+hashseal: "blake3:aa3ca8b5905dc75963d1f28d36749d727aeb3d931a245c1f6268e8602eec55c0"
 ---
 # hashseal-core
 
-Rust library for HashSeal instruct seals, (future) tree ledgers, and verify logic.
+Rust library for HashSeal `instruct-v2` seals, `signing-v2` (OpenSSH `SSHSIG` + hardened GPG), Unicode smuggling checks, `.hashseal.lock`, and tree/bundle verification.
 
 ```text
 Copyright (c) 2026 MonkeyKing.dev

@@ -2,7 +2,7 @@
   "name": "hashseal",
   "displayName": "HashSeal",
   "description": "Seal and verify AI instruction files with inline diagnostics and status bar indicator.",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "publisher": "hashseal",
   "license": "MIT",
   "engines": {

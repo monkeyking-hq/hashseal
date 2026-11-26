@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.6.1] - 2026-11-26
+
+### Fixed
+- Updated `verify/go/test/run_vectors.go` from `instruct-v1.json` to `instruct-v2.json`.
+- Updated subdirectory READMEs (`verify/{js,python,go,vectors}/README.md`, `extensions/{vscode,browser}/README.md`, `rust/hashseal-{core,wasm}/README.md`) and test header comments to match `v0.6.x` capabilities and pruned surfaces.
+
 ## [0.6.0] - 2026-11-26
 
 ### Added

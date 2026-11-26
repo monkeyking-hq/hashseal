@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:2ce2d637a25f3f1fb49c1b167601cfdd477101b9c12179be81604a0b5f0294b4"
+hashseal: "blake3:c31166c55b05fd3ea747f137986816629ae0b6281013928bfc3b8612780ca0b8"
 ---
 # HashSeal browser extension (Chrome MV3)
 
@@ -25,7 +25,7 @@ No network access, no CLI required. Digest check only (FULL canonical); GPG sign
 
 | Scope | Supported |
 |-------|-----------|
-| Instruct Markdown (`hashseal` field, FULL mode) | Yes — same as `verify/js` + `instruct-v1` |
+| Instruct Markdown (`hashseal` field, FULL mode) | Yes — same as `verify/js` (`instruct-v2` + Unicode smuggling check) |
 | Tree ledger / `hashseal-bundle` | No (use CLI or `verify/js` `verifyTreeInMemory` outside the popup) |
 | GPG `hashseal_sig` | Not verified in-browser |
 

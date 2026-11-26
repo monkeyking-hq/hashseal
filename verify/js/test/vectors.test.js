@@ -1,5 +1,5 @@
 /**
- * Run official instruct-v1 vectors against checkDocumentText.
+ * Run official instruct-v2 vectors against checkDocumentText.
  * Usage: node test/vectors.test.js
  * Zero npm deps.
  */

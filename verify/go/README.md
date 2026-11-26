@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:69293d800fdf094050c149aeaf619f2f57c1f44a58c56b387c6bdb84c84419f4"
+hashseal: "blake3:4801ebf012c56db67cb9a44263a036860f39a5d7d152639074e4158a7b59cd75"
 ---
 # hashseal-verify (Go)
 
@@ -7,8 +7,8 @@ Zero **external module** dependencies (stdlib + vendored BLAKE3 in-tree).
 
 ```bash
 cd verify/go
-go test .
-go run ./test/   # instruct-v1 runner
+go test ./...                    # instruct-v2 (19), signing-v2 (5), tree-v1 (12)
+go run ./test/run_vectors.go     # standalone instruct-v2 runner
 ```
 
 ```go
