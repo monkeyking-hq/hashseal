@@ -1,54 +1,41 @@
 ---
-hashseal: "blake3:e569301ba1855f337bef678501762f065b75ef23a873deff748faa48c9d6803a"
+hashseal: "blake3:f0d56d10ea0cf7901a95471c0bf73a9b4b3a34a626abe549d69cc459220f3bab"
 ---
-# Signing on top of sealing
+# Signing on top of sealing (`signing-v2`)
 
 **Signed, Sealed, Delivered - I'm Yours.**
 
-HashSeal **seals** content with a digest, then optionally **signs** that digest with **GPG using the same settings as git**.
+HashSeal seals content with BLAKE3, then signs the digest + context scope using **OpenSSH `SSHSIG`** or **hardened GPG**, aligned with your git config.
 
-## YAML order
-
-```yaml
----
-title: agents
-hashseal: "blake3:…"
-hashseal_sig: |
-  -----BEGIN PGP SIGNATURE-----
-  …
-  -----END PGP SIGNATURE-----
----
-body
-```
-
-`hashseal` and `hashseal_sig` are **excluded** from the content hash.
-
-## Signed payload
+## Signed payload (`HASHSEAL-SIG-V2`)
 
 ```text
-HASHSEAL-GPG1
+HASHSEAL-SIG-V2
 digest=blake3:<hex>
+scope=<repo-relative-posix-path | *>
 ```
 
-GPG creates a **detached ASCII-armored** signature of that UTF-8 payload.
+- **Default (`scope=<rel-path>`)**: prevents copying a signed harmless file over `AGENTS.md` or another instruction file.
+- **Portable (`--portable`, `scope=*`)**: for distributable third-party `SKILL.md` packs verified at any path.
 
-## Git alignment
+## Backends &amp; trust roots
 
-| Git config | HashSeal |
-|------------|----------|
-| `user.signingKey` | Default `--signing-key` |
-| `gpg.program` | GPG binary (default `gpg`) |
+| Backend | Git config | Trust root |
+|---|---|---|
+| **SSH (`SSHSIG`)** | `gpg.format = ssh` | `.hashseal/allowed_signers` (or `--allowed-signers` / `gpg.ssh.allowedSignersFile`) |
+| **Hardened GPG** | `gpg.format = openpgp` (or unset) | Isolated keyring from `.hashseal/keys/*.asc` + `--status-fd 1` + `allowed_key_ids` |
 
-If `git commit -S` works, `hashseal seal --instruct --sign` should work.
+Override backend explicitly with `--sign-format ssh|gpg|auto`.
 
-## CLI
+## Fail-closed verification
+
+When `hashseal_sig` is present, `hashseal check` verifies it by default and fails closed with `UNVERIFIED_SIGNATURE` if the trust root or signing tool is missing. Pass `--digest-only` to opt out explicitly.
 
 ```bash
-hashseal seal --instruct --sign
-hashseal check --require-signature
+hashseal seal --instruct --sign --lock --root .
+hashseal check --root . --require-signature
+hashseal check --diff origin/main --require-signature
 ```
-
-Local default: unsigned. Release CI: enable sign + require signature.
 
 ```text
 Copyright (c) 2026 MonkeyKing.dev

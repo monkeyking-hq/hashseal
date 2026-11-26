@@ -2,58 +2,46 @@
 layout: default
 title: Instruct seal format
 permalink: /instruct/format/
-hashseal: "blake3:1a1b69cb304a38979f6d4b02640948d437b58b4f95a5a87ed8f094680554fd64"
+hashseal: "blake3:e6a54d305b2c957836a878eae44f13acb522f83987ede375d058e1a62e06b5c1"
 ---
 
-# Instruct seal format (Markdown)
+# Instruct seal format (`instruct-v2`)
 
 Format for the **agent instruction file integrity seal**: what was sealed is what agents still read.
 
-## Seal field
-
-YAML front matter:
+## Seal &amp; signature fields
 
 ```yaml
 ---
 hashseal: "blake3:<hex>"
+hashseal_sig_format: ssh
+hashseal_scope: "AGENTS.md"
 hashseal_sig: |
-  -----BEGIN PGP SIGNATURE-----
+  -----BEGIN SSH SIGNATURE-----
   …
-  -----END PGP SIGNATURE-----
+  -----END SSH SIGNATURE-----
 ---
 ```
 
-Signature is optional; see [signing](../signing.md).
+Reserved top-level front-matter keys excluded from the hashed payload:
+`hashseal` (or configured `document.field`), `hashseal_sig`, `hashseal_sig_format`, `hashseal_signer`, `hashseal_scope`, `hashseal_key_id`.
 
-## Chicken-and-egg
+## Canonical hashing (`instruct-v2`)
 
-The digest is computed over **canonical content with seal and signature fields excluded** (`hashseal`, `hashseal_sig`, `hashseal_key_id`). Updating the seal/sig does not change the hashed payload.
+1. Strip leading UTF-8 BOM (`U+FEFF`) and normalize `\r\n` / `\r` → `\n` for hashing only.
+2. Remove top-level reserved keys and their indented continuation blocks; keep all remaining front-matter lines **verbatim** (preserving YAML lists, nested maps, key order, and comments).
+3. Compute BLAKE3 over domain-separated bytes:
+   - **`full` (default, with non-empty kept FM):** `HASHSEAL-INSTRUCT-V2\nFM\n<kept_fm_lf>\nBODY\n<body_lf>`
+   - **`full` (no non-empty kept FM):** `HASHSEAL-INSTRUCT-V2\nBODY\n<body_lf>`
+   - **`body-only`:** `HASHSEAL-INSTRUCT-V2-BODY\n<body_lf>`
 
-**YAML order when both present:** `hashseal` then `hashseal_sig` (armor).
+## Unicode smuggling hygiene
 
-## Canonical modes
-
-| Mode | Hash input |
-|------|------------|
-| `full` (default) | Sorted front-matter keys (minus seal fields) as `key: value\n` lines, then `\n`, then LF-normalized body. If no non-seal FM keys, body only. |
-| `body-only` | LF-normalized body only |
-
-## CLI
-
-```bash
-hashseal seal --instruct
-hashseal check
-hashseal check --no-fail
-hashseal unseal --instruct
-```
-
-## Verify UX
-
-Failures list every path with `MISMATCH` / `MISSING_SEAL` / … and expected vs actual digests.
+By default (`unicode_policy: "fail"`), `seal` and `check` reject Unicode Tag (`U+E0000..=U+E007F`), BiDi controls (`U+202A..=U+202E`, `U+2066..=U+2069`, `U+061C`, `U+200E`, `U+200F`), zero-width formatting (`U+200B`, `U+2060..=U+2064`), and embedded mid-file BOMs (`U+FEFF` at index &gt; 0) with `SUSPICIOUS_UNICODE`.
 
 ## Vectors
 
-Official cases: [`verify/vectors/instruct-v1.json`](../../verify/vectors/instruct-v1.json) (FULL canonical mode). All language SDKs and core tests must agree.
+Official cases: [`verify/vectors/instruct-v2.json`](../../verify/vectors/instruct-v2.json) (19 cases).
 
 ```text
 Copyright (c) 2026 MonkeyKing.dev

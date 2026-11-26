@@ -1,4 +1,4 @@
-# Multi-target release binary skeleton for the stonemonkey Gitea runner.
+# Release binary packaging + SHA256SUMS for the stonemonkey Gitea runner.
 # Linux amd64 only — no windows/macos runner is registered.
 #
 # Copyright (c) 2026 MonkeyKing.dev
@@ -31,7 +31,12 @@ jobs:
           cargo build -p hashseal --release --target x86_64-unknown-linux-gnu
           cargo build -p hashseal-check --release --target x86_64-unknown-linux-gnu
 
-      - name: Stage artifacts
+      - name: Smoke test binaries
+        run: |
+          ./target/x86_64-unknown-linux-gnu/release/hashseal --version
+          ./target/x86_64-unknown-linux-gnu/release/hashseal-check --version
+
+      - name: Package archive & SHA256SUMS
         run: |
           STAGE=dist/hashseal-x86_64-unknown-linux-gnu
           mkdir -p "$STAGE"
@@ -39,9 +44,11 @@ jobs:
           cp target/x86_64-unknown-linux-gnu/release/hashseal-check "$STAGE/"
           cp LICENSE "$STAGE/" 2>/dev/null || true
           echo "HashSeal release binaries for x86_64-unknown-linux-gnu" > "$STAGE/README.txt"
+          tar -C "$STAGE" -czf dist/hashseal-x86_64-unknown-linux-gnu.tar.gz .
+          (cd dist && sha256sum hashseal-x86_64-unknown-linux-gnu.tar.gz > SHA256SUMS)
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: hashseal-x86_64-unknown-linux-gnu
-          path: dist/hashseal-x86_64-unknown-linux-gnu/
+          path: dist/

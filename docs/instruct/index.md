@@ -2,104 +2,36 @@
 layout: default
 title: Agent instruction file integrity seal
 permalink: /instruct/
-hashseal: "blake3:99e4ed772cf19947c9a7b7cd99980c13c1cfd29f43f351bf1f18d05307955ad6"
+hashseal: "blake3:16851fd18462f90ce70358277e68deeee04c2aa88bed701c51d69748110ab7f3"
 ---
 
-# Agent instruction file integrity seal
+# Agent instruction file integrity seal (`instruct-v2`)
 
-Seal agent instruction files and verify them so developers and hosts only pass **approved** content to models.
+Seal agent instruction files and verify them before developers, CI, or agent harnesses pass them to models.
 
-## What it is
+## What it protects
 
-An **integrity seal** for instruction files (Markdown and configured instruct formats — `AGENTS.md`, skills, policy docs you keep next to code): a **BLAKE3 content digest** in YAML front matter. You verify that seal before agents or CI use the file. Optional GPG signature attests who sealed it (same settings as `git commit -S`).
+- **Prompt &amp; policy integrity (`instruct-v2`)** — lossless raw front-matter + body BLAKE3 digest protects YAML lists (`globs:`, `tools:`), nested maps, and Markdown body verbatim.
+- **Cryptographic trust (`signing-v2`)** — OpenSSH `SSHSIG` (`.hashseal/allowed_signers`) or hardened GPG (`.hashseal/keys/`), bound to `scope` (`<rel-path>` or `*` via `--portable`) and failing closed (`UNVERIFIED_SIGNATURE`) if unverified.
+- **Presence &amp; allowlist (`.hashseal.lock`)** — detects deleted (`LOCKED_FILE_REMOVED`) and unapproved (`UNAPPROVED_FILE`) instruction files.
+- **Unicode smuggling defense** — detects hidden Unicode Tag, BiDi override, zero-width, and embedded BOM characters (`SUSPICIOUS_UNICODE`).
 
-This answers: *Is this still the instruction text I sealed?*  
-It does **not** claim legal authorship, replace code review, or guarantee how a model will behave — only that the **file contents** match the seal.  It proves that instructions have not been altered or changed since it was shipped.
-
-## Why use it
-
-- **Stop silent prompt edits** — multi-agent workflows and shared repos rewrite instructions; check fails with path + digests.
-- **Gate model input** — fail the pipeline or refuse the agent run when seals break.
-- **Same check everywhere** — CLI, tiny binary, browser extension, and zero-dep SDKs share official vectors.
-- **Clear failures** — every non-OK path is listed (no silent exit-only fails).
-- **End User Support** - Verify that what the user is running still matches what you shipped and that the user hasn't customized anything when troubleshooting anomalies in agent execution. 
-
-## How it works
-
-1. Canonicalize document content ([format details](format.md)).
-2. Write `hashseal: "blake3:<hex>"` into front matter (seal fields excluded from the hash).
-3. Optionally add `hashseal_sig` via `--sign`.
-4. Before use: recompute digest; compare; report status per file.
-
-```text
-hashseal seal --instruct [--sign]
-hashseal check [--require-signature]
-```
-## What does it do to my instruction files?
-
-It adds a single line to the YAML Front Matter of your instruction files:
-
-For example:
-
-```text
-hashseal: "blake3:52fdb937b7c8e46f94723ea84eab22a4aff20830d2a9c9f62452536591c1d6cc"
-```
-
-## How to use it in your projects
-
-### 1. Install the CLI
-
-Package and binary are both named **`hashseal`**:
+## Quick workflow
 
 ```bash
-cargo build -p hashseal --release
-# or cargo install --path rust/hashseal --locked
+hashseal init --claude-hooks --git-hooks --lock
+hashseal seal --instruct --sign --lock --root .
+hashseal check --root . --require-signature
 ```
-
-See [Install](../install.md).
-
-### 2. Seal instructions
-
-```bash
-hashseal seal --instruct --root .
-hashseal seal --instruct --sign --root .   # GPG via git config
-```
-
-By default this seals **agent instruction files only** (for example `AGENTS.md`, `CLAUDE.md`, Copilot/Cursor rules, and common agent skill/command directories) — not every `README.md` or docs page. Override with `document.include` / `document.exclude` in `.hashseal.json` (see [CLI config](../cli.md#default-instruct-includes)).
-
-### 3. Check before agents / models
-
-```bash
-hashseal check --root .
-# optional tiny binary (blake3-only deps):
-hashseal-check --root .
-```
-
-### 4. Or check in-process (no CLI)
-
-Use a [verify SDK](verify-sdks.md) in your language so CI or a host can validate Markdown without spawning a process.
-
-### 5. Optional surfaces
-
-| Surface | Use when |
-|---------|----------|
-| [Browser extension](../extensions/) | Paste-check instructions in the browser |
-| [VS Code / IDE](../extensions/) | Seal/check from the editor |
-| [Agent skills](../../skills/) | Teach agents to respect sealed files |
-| [Signing](../signing.md) | Require cryptographic attestation |
 
 ## Docs in this section
 
 | Page | Topic |
 |------|--------|
-| [Seal format](format.md) | Front matter, canonical modes, chicken-and-egg |
-| [Verify SDKs](verify-sdks.md) | JS, Python, Java, Go, Ruby, .NET + vectors |
-| [CLI](../cli.md) | `seal --instruct`, `check`, `unseal` |
-| [Signing](../signing.md) | GPG / git key settings |
-
-## Related (build line)
-
-Tree ledgers and CI plugins live under **[Build tools](../build/)** — same core algorithms, different object (directory vs document).
+| [Seal format](format.md) | `instruct-v2` raw-FM framing, reserved fields, Unicode hygiene |
+| [Signing](../signing.md) | `signing-v2` (SSH `allowed_signers` + hardened GPG), `scope`, `--portable` |
+| [Verify SDKs](verify-sdks.md) | Tier-1 JS, Python, Go, WASM + frozen vectors |
+| [CLI](../cli.md) | `init`, `seal`, `check`, `verify`, `unseal`, `clean` |
 
 ```text
 Copyright (c) 2026 MonkeyKing.dev

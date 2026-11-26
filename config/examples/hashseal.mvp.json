@@ -72,7 +72,8 @@
     "canonical": "full",
     "field": "hashseal",
     "auto_frontmatter": true,
-    "algorithm": "blake3"
+    "algorithm": "blake3",
+    "unicode_policy": "fail"
   },
   "tree": {
     "include": ["**/*"],
@@ -90,7 +91,9 @@
   },
   "signing": {
     "enable": false,
-    "require": false
+    "require": false,
+    "format": "auto",
+    "allowed_signers": ".hashseal/allowed_signers"
   },
   "report": {
     "write": true,

@@ -3,7 +3,7 @@ layout: default
 title: HashSeal
 permalink: /
 home: true
-description: Seal and verify AI instruction files and build trees — what was sealed is what you still have.
+description: Cryptographic integrity, trust, and runtime gating for AI agent instruction files and skill packs.
 ---
 
 <section class="hero">
@@ -11,7 +11,7 @@ description: Seal and verify AI instruction files and build trees — what was s
   <h1>What was sealed is what you still have</h1>
   <p class="hero__tagline">Signed, Sealed, Delivered - I'm Yours.</p>
   <p class="hero__lead">
-    Integrity tooling for agent instruction files and source trees.
+    Cryptographic integrity, trust, and runtime gating for AI agent instruction files and skill packs.
   </p>
   <div class="hero__actions">
     <a class="btn btn--primary" href="{{ '/install.html' | relative_url }}">Install</a>
@@ -24,23 +24,24 @@ description: Seal and verify AI instruction files and build trees — what was s
 </section>
 
 <section class="section">
-  <h2>Two Paths</h2>
+  <h2>Core Capabilities</h2>
   <div class="grid-2">
     <article class="card card--lead">
-      <span class="lead-label">Sealed, Verifiable, Agent Instruction Files</span>
-      <h3><a href="{{ '/instruct/' | relative_url }}">Agent instruction file integrity sealing</a></h3>
+      <span class="lead-label">Instruct-v2 &amp; Signing-v2</span>
+      <h3><a href="{{ '/instruct/' | relative_url }}">Signed, verifiable agent instructions</a></h3>
       <p>
-        Seal <code>AGENTS.md</code>, skills, and other AI instruction files with a
-        <a href="https://en.wikipedia.org/wiki/BLAKE_(hash_function)#BLAKE3" title="BLAKE3 on Wikipedia" rel="noopener noreferrer" target="_blank">BLAKE3 digest</a>
-        with optional GPG via git’s signing credentials. The idea is simple; Check instruction file integrity before sending them to models or agents to run.  Sign your instructions so that your users can verify and trust that they are exactly what you intended to deliver.
+        Seal <code>AGENTS.md</code>, <code>CLAUDE.md</code>, <code>SKILL.md</code>, and IDE rules with
+        lossless raw front-matter <a href="https://en.wikipedia.org/wiki/BLAKE_(hash_function)#BLAKE3" rel="noopener noreferrer" target="_blank">BLAKE3</a>
+        digests, OpenSSH <code>SSHSIG</code> or hardened GPG signatures bound to file scope, and built-in Unicode smuggling detection.
       </p>
     </article>
     <article class="card">
-      <span class="lead-label">Secure your CI and Build Chains</span>
-      <h3><a href="{{ '/build/' | relative_url }}">Multi Language build system tools to sign and seal your entire build system</a></h3>
+      <span class="lead-label">Runtime &amp; CI Enforcement</span>
+      <h3><a href="{{ '/cli.html' | relative_url }}">Lockfiles, agent hooks &amp; PR gates</a></h3>
       <p>
-        Tree ledgers, release bundles (<code>hashseal-bundle/</code>), git hooks, and thin plugins
-        so CI and multi-agent builds cannot silently rewrite what you ship.  Stop multi-agent workflows from accidentally altering build chains mid-stream. Ship builds with artifacts that can be verified by anyone.
+        Bootstrap <code>.hashseal.lock</code>, git pre-commit hooks, and Claude Code hooks via
+        <code>hashseal init</code>. Enforce human-signed instruction edits in PRs with
+        <code>hashseal check --diff origin/main --require-signature</code>.
       </p>
     </article>
   </div>
@@ -51,20 +52,20 @@ description: Seal and verify AI instruction files and build trees — what was s
   <ol class="steps">
     <li>
       <div>
-        <strong>Seal</strong>
-        <span>Canonicalize content, write <code>hashseal: "blake3:…"</code> (instruct) or a tree ledger (build).</span>
+        <strong>Bootstrap &amp; Seal</strong>
+        <span>Run <code>hashseal init</code> or <code>hashseal seal --instruct --sign --lock</code>.</span>
       </div>
     </li>
     <li>
       <div>
-        <strong>Ship or hand off</strong>
-        <span>Commit, release, or pass instructions to an agent host — the seal travels with the files.</span>
+        <strong>Gate Runtime &amp; PRs</strong>
+        <span>Agent hooks, pre-commit, and CI check seals, signatures, lockfile, and Unicode before models run.</span>
       </div>
     </li>
     <li>
       <div>
-        <strong>Check</strong>
-        <span>Recompute digests. Failures list every path that drifted, with expected vs actual digests.</span>
+        <strong>Verify Anywhere</strong>
+        <span>Same frozen vectors across Rust CLI, <code>hashseal-check</code>, WASM, JS, Python, and Go.</span>
       </div>
     </li>
   </ol>
@@ -72,23 +73,8 @@ description: Seal and verify AI instruction files and build trees — what was s
 
 <section class="section">
   <h2>Quickstart</h2>
-  <pre><code>cargo build -p hashseal --release
-cargo run -p hashseal -- seal --instruct --root fixtures/mvp-demo
-cargo run -p hashseal -- check --root fixtures/mvp-demo</code></pre>
-  <p class="muted">Same core powers the tiny <code>hashseal-check</code> binary, WASM, browser extension, and zero-dep verify SDKs.</p>
+  <pre><code>hashseal init --claude-hooks --git-hooks --lock
+hashseal seal --instruct --sign --lock --root .
+hashseal check --root . --require-signature</code></pre>
   <p><a href="{{ '/install.html' | relative_url }}">Install details →</a> · <a href="{{ '/cli.html' | relative_url }}">CLI reference →</a></p>
-</section>
-
-<section class="section">
-  <h2>Docs</h2>
-  <div class="grid-2">
-    <article class="card">
-      <h3><a href="{{ '/instruct/' | relative_url }}">Instruct</a></h3>
-      <p>Format, signing, verify SDKs, IDE and browser surfaces.</p>
-    </article>
-    <article class="card">
-      <h3><a href="{{ '/build/' | relative_url }}">Build</a></h3>
-      <p>Tree seal, release bundles, plugins, packaging.</p>
-    </article>
-  </div>
 </section>
