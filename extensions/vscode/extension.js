@@ -1,5 +1,5 @@
 /**
- * HashSeal VS Code extension — spawn hashseal / hashseal-check from PATH.
+ * HashSeal VS Code extension — diagnostics, status bar, check-on-save, and single-file check.
  * Zero runtime npm dependencies.
  *
  * Copyright (c) 2026 MonkeyKing.dev
@@ -10,30 +10,57 @@
 const vscode = require("vscode");
 const { spawn } = require("child_process");
 const path = require("path");
-const fs = require("fs");
 
-/**
- * @param {vscode.ExtensionContext} context
- */
+/** @type {vscode.DiagnosticCollection} */
+let diagnostics;
+/** @type {vscode.StatusBarItem} */
+let statusBar;
+/** @type {vscode.OutputChannel | undefined} */
+let outputChannel;
+
 function activate(context) {
+  diagnostics = vscode.languages.createDiagnosticCollection("hashseal");
+  statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 50);
+  statusBar.command = "hashseal.checkWorkspace";
+  statusBar.text = "$(shield) HashSeal";
+  statusBar.tooltip = "Click to run HashSeal workspace check";
+  statusBar.show();
+
   context.subscriptions.push(
+    diagnostics,
+    statusBar,
     vscode.commands.registerCommand("hashseal.checkWorkspace", () =>
-      runOnWorkspace("check")
+      runWorkspaceCheck()
     ),
     vscode.commands.registerCommand("hashseal.sealInstructWorkspace", () =>
-      runOnWorkspace("seal-instruct")
+      runSealWorkspace()
     ),
     vscode.commands.registerCommand("hashseal.checkActiveFile", () =>
       checkActiveFile()
-    )
+    ),
+    vscode.workspace.onDidSaveTextDocument((doc) => {
+      const cfg = vscode.workspace.getConfiguration("hashseal");
+      if (cfg.get("checkOnSave") !== false && isCandidateDoc(doc)) {
+        runWorkspaceCheck({ quiet: true });
+      }
+    })
   );
 }
 
 function deactivate() {}
 
-/**
- * @returns {string | undefined}
- */
+function isCandidateDoc(doc) {
+  if (!doc || doc.isUntitled) return false;
+  const p = doc.uri.fsPath.toLowerCase();
+  return (
+    p.endsWith(".md") ||
+    p.endsWith(".mdc") ||
+    p.endsWith(".cursorrules") ||
+    p.endsWith(".windsurfrules") ||
+    p.endsWith(".clinerules")
+  );
+}
+
 function workspaceRoot() {
   const folders = vscode.workspace.workspaceFolders;
   if (!folders || folders.length === 0) {
@@ -43,10 +70,6 @@ function workspaceRoot() {
   return folders[0].uri.fsPath;
 }
 
-/**
- * Resolve full CLI binary.
- * @returns {string}
- */
 function resolveHashsealBin() {
   const cfg = vscode.workspace.getConfiguration("hashseal");
   const configured = (cfg.get("bin") || "").trim();
@@ -55,71 +78,67 @@ function resolveHashsealBin() {
   return process.platform === "win32" ? "hashseal.exe" : "hashseal";
 }
 
-/**
- * Resolve tiny check binary.
- * @returns {string}
- */
-function resolveCheckBin() {
-  const cfg = vscode.workspace.getConfiguration("hashseal");
-  const configured = (cfg.get("checkBin") || "").trim();
-  if (configured) return configured;
-  if (process.env.HASHSEAL_CHECK_BIN) return process.env.HASHSEAL_CHECK_BIN;
-  return process.platform === "win32" ? "hashseal-check.exe" : "hashseal-check";
+function getOutput() {
+  if (!outputChannel) {
+    outputChannel = vscode.window.createOutputChannel("HashSeal");
+  }
+  return outputChannel;
 }
 
-/**
- * @param {"check"|"seal-instruct"} mode
- */
-async function runOnWorkspace(mode) {
+async function runWorkspaceCheck(opts) {
+  const quiet = opts && opts.quiet;
   const root = workspaceRoot();
   if (!root) return;
 
   const cfg = vscode.workspace.getConfiguration("hashseal");
-  let bin;
-  /** @type {string[]} */
-  let args;
-
-  if (mode === "check" && cfg.get("preferCheckBinary") !== false) {
-    bin = resolveCheckBin();
-    args = ["--root", root];
-  } else if (mode === "check") {
-    bin = resolveHashsealBin();
-    args = ["check", "--root", root];
-  } else {
-    bin = resolveHashsealBin();
-    args = ["seal", "--instruct", "--root", root];
-  }
-
-  const channel = getOutput();
-  channel.show(true);
-  channel.appendLine(`$ ${bin} ${args.join(" ")}`);
-  channel.appendLine(`cwd: ${root}`);
+  const bin = resolveHashsealBin();
+  const args = ["check", "--format", "json", "--root", root];
+  if (cfg.get("requireSignature")) args.push("--require-signature");
 
   try {
-    const code = await spawnInherit(bin, args, root, channel);
-    if (code === 0) {
-      vscode.window.showInformationMessage(
-        mode === "check" ? "HashSeal check: OK" : "HashSeal seal: OK"
-      );
+    const res = await spawnCapture(bin, args, root);
+    const batch = JSON.parse(res.stdout);
+    diagnostics.clear();
+
+    if (batch.ok) {
+      statusBar.text = `$(verified) HashSeal: ${batch.summary.ok} OK`;
+      statusBar.backgroundColor = undefined;
+      if (!quiet) {
+        vscode.window.showInformationMessage(`HashSeal check: ${batch.summary.ok} file(s) OK`);
+      }
     } else {
-      vscode.window.showErrorMessage(
-        `HashSeal exited ${code} (see HashSeal output for every non-OK path)`
-      );
+      const byFile = new Map();
+      for (const f of batch.findings || []) {
+        const fp = f.path ? (path.isAbsolute(f.path) ? f.path : path.join(root, f.path)) : root;
+        const msg = `[${String(f.status || "error").toUpperCase()}] ${f.message || ""}` +
+          (f.expected ? ` expected=${f.expected}` : "") +
+          (f.actual ? ` actual=${f.actual}` : "");
+        const diag = new vscode.Diagnostic(
+          new vscode.Range(0, 0, 0, 1),
+          msg.trim(),
+          vscode.DiagnosticSeverity.Error
+        );
+        diag.source = "hashseal";
+        if (!byFile.has(fp)) byFile.set(fp, []);
+        byFile.get(fp).push(diag);
+      }
+      for (const [fp, list] of byFile.entries()) {
+        diagnostics.set(vscode.Uri.file(fp), list);
+      }
+      statusBar.text = `$(error) HashSeal: ${batch.findings.length} issue(s)`;
+      statusBar.backgroundColor = new vscode.ThemeColor("statusBarItem.errorBackground");
+      if (!quiet) {
+        vscode.window.showErrorMessage(`HashSeal failed: ${batch.findings.length} issue(s)`);
+      }
     }
   } catch (e) {
-    const msg = e && e.message ? e.message : String(e);
-    channel.appendLine(msg);
-    vscode.window.showErrorMessage(
-      `HashSeal failed to start (${bin}). Install CLI, set PATH / HASHSEAL_BIN / hashseal.bin. ${msg}`
-    );
+    statusBar.text = "$(warning) HashSeal: CLI error";
+    if (!quiet) {
+      vscode.window.showErrorMessage(`HashSeal failed: ${e.message || e}`);
+    }
   }
 }
 
-/**
- * Check active editor document text via full CLI `check` if file is under root,
- * or report that in-editor WASM is not wired yet — spawn check on workspace is primary.
- * For a single open file path, run hashseal-check / check on workspace (CLI lists bad files).
- */
 async function checkActiveFile() {
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
@@ -128,56 +147,72 @@ async function checkActiveFile() {
   }
   const doc = editor.document;
   if (doc.isUntitled) {
-    vscode.window.showWarningMessage(
-      "HashSeal: save the file first so the CLI can check it on disk."
-    );
+    vscode.window.showWarningMessage("HashSeal: save the file first so the CLI can check it.");
     return;
   }
-  // Prefer workspace check so verify UX names every bad file under root.
-  // Additionally echo the active path for focus.
+  const root = workspaceRoot() || path.dirname(doc.uri.fsPath);
+  const cfg = vscode.workspace.getConfiguration("hashseal");
+  const bin = resolveHashsealBin();
+  const args = ["check", "--format", "json", "--root", root, doc.uri.fsPath];
+  if (cfg.get("requireSignature")) args.push("--require-signature");
+
+  try {
+    const res = await spawnCapture(bin, args, root);
+    const batch = JSON.parse(res.stdout);
+    const uri = doc.uri;
+    if (batch.ok) {
+      diagnostics.delete(uri);
+      vscode.window.showInformationMessage(`HashSeal: ${path.basename(uri.fsPath)} OK`);
+    } else {
+      const diags = (batch.findings || []).map((f) => {
+        const d = new vscode.Diagnostic(
+          new vscode.Range(0, 0, 0, 1),
+          `[${String(f.status).toUpperCase()}] ${f.message || ""}`.trim(),
+          vscode.DiagnosticSeverity.Error
+        );
+        d.source = "hashseal";
+        return d;
+      });
+      diagnostics.set(uri, diags);
+      vscode.window.showErrorMessage(`HashSeal: ${path.basename(uri.fsPath)} failed (${diags.length} issue)`);
+    }
+  } catch (e) {
+    vscode.window.showErrorMessage(`HashSeal failed: ${e.message || e}`);
+  }
+}
+
+async function runSealWorkspace() {
+  const root = workspaceRoot();
+  if (!root) return;
+  const bin = resolveHashsealBin();
   const channel = getOutput();
   channel.show(true);
-  channel.appendLine(`Active file: ${doc.uri.fsPath}`);
-  await runOnWorkspace("check");
-}
-
-/**
- * @param {string} bin
- * @param {string[]} args
- * @param {string} cwd
- * @param {vscode.OutputChannel} channel
- * @returns {Promise<number>}
- */
-function spawnInherit(bin, args, cwd, channel) {
-  return new Promise((resolve, reject) => {
-    const child = spawn(bin, args, {
-      cwd,
-      env: process.env,
-      shell: false,
-      windowsHide: true,
-    });
-    child.stdout.on("data", (d) => channel.append(d.toString()));
-    child.stderr.on("data", (d) => channel.append(d.toString()));
-    child.on("error", (err) => {
-      if (err.code === "ENOENT") {
-        err.message =
-          `CLI not found: "${bin}". Put hashseal / hashseal-check on PATH, ` +
-          "or set HASHSEAL_BIN / HASHSEAL_CHECK_BIN / settings hashseal.bin.";
-      }
-      reject(err);
-    });
-    child.on("close", (code) => resolve(code == null ? 1 : code));
-  });
-}
-
-/** @type {vscode.OutputChannel | undefined} */
-let outputChannel;
-
-function getOutput() {
-  if (!outputChannel) {
-    outputChannel = vscode.window.createOutputChannel("HashSeal");
+  channel.appendLine(`$ ${bin} seal --instruct --root ${root}`);
+  try {
+    const res = await spawnCapture(bin, ["seal", "--instruct", "--root", root], root);
+    if (res.stdout) channel.append(res.stdout);
+    if (res.stderr) channel.append(res.stderr);
+    if (res.code === 0) {
+      await runWorkspaceCheck({ quiet: true });
+      vscode.window.showInformationMessage("HashSeal seal: OK");
+    } else {
+      vscode.window.showErrorMessage(`HashSeal seal exited ${res.code}`);
+    }
+  } catch (e) {
+    vscode.window.showErrorMessage(`HashSeal failed: ${e.message || e}`);
   }
-  return outputChannel;
+}
+
+function spawnCapture(bin, args, cwd) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(bin, args, { cwd, env: process.env, shell: false, windowsHide: true });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (d) => { stdout += d.toString(); });
+    child.stderr.on("data", (d) => { stderr += d.toString(); });
+    child.on("error", reject);
+    child.on("close", (code) => resolve({ code: code == null ? 1 : code, stdout, stderr }));
+  });
 }
 
 module.exports = { activate, deactivate };

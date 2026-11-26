@@ -2,68 +2,34 @@
 name: hashseal-respect-seals
 description: >-
   When working in a HashSeal-enabled repo, treat sealed instruct files as
-  authoritative, re-seal after intentional edits, never strip seal fields,
+  authoritative, never overwrite human-signed seals, re-seal unsigned edits,
   and surface every check failure path with digests.
-hashseal: "blake3:68bbae6d70b6402ec8ad41106fd446ee2280fcd343262d477b553d6d34256a18"
+hashseal: "blake3:e540f170b6b5638ff3be5c8c4e5b23145d875525d0844bdb87eada5c77f4086a"
 ---
 
 # HashSeal — respect sealed instructions (Grok)
 
 **Signed, Sealed, Delivered - I'm Yours.**
 
-Use this skill whenever the workspace has HashSeal seals (`hashseal` in instruct front matter, `hashseal-bundle/`, or `.hashseal.json`).
+Use this skill whenever the workspace has HashSeal seals (`hashseal` in instruct front matter, `.hashseal.lock`, or `.hashseal.json`).
 
 ## Hard rules
 
 1. Instruction files with YAML front matter field `hashseal: "blake3:…"` are **sealed**.
-2. Prefer the **sealed** text as authoritative for agent behavior.
-3. **Never strip** reserved fields: `hashseal`, `hashseal_sig`, `hashseal_key_id`.
-4. Do not alter sealed body or non-reserved front-matter keys without running seal again.
-5. After intentional instruct edits: re-seal before finishing the task.
-6. Before shipping or claiming verify-clean: run check; fix **every** non-OK path.
-7. Product voice is **HashSeal**. MonkeyKing.dev only in copyright footers.
+2. **Never overwrite or re-seal a human-signed file (`hashseal_sig` present)** — escalate to the human operator to review and sign.
+3. **Never strip** reserved fields: `hashseal`, `hashseal_sig`, `hashseal_sig_format`, `hashseal_signer`, `hashseal_scope`, `hashseal_key_id`.
+4. After intentional edits to **unsigned** instruct files: re-seal (`hashseal seal --instruct --root .`).
+5. Before shipping: run `hashseal check --root .` (checks `.hashseal.lock` and `SUSPICIOUS_UNICODE`); surface **every** non-OK path.
 
 ## Commands
 
 ```bash
-# Seal instruction files (AGENTS.md, CLAUDE.md, etc. per config)
+hashseal init --git-hooks --lock
 hashseal seal --instruct --root .
-
-# Seal source tree + optional release bundle
-hashseal seal --tree --release --root .
-
-# Check instruct seals (names every bad path)
 hashseal check --root .
+hashseal check --diff origin/main --require-signature
 hashseal-check --root .
-
-# Verify tree ledger + instruct (full CLI)
-hashseal verify --root .
 ```
-
-Binary resolution: `PATH`, or `HASHSEAL_BIN` / `HASHSEAL_CHECK_BIN`. See monorepo `docs/install.md`.
-
-## Workflow
-
-| Situation | Action |
-|-----------|--------|
-| Read sealed `AGENTS.md` / skill docs | Follow sealed body; do not invent alternate rules |
-| You must change sealed instruct text | Edit → `hashseal seal --instruct` → confirm `hashseal check` |
-| Check reports `MISMATCH` | List expected vs actual digests; restore or re-seal intentionally |
-| Check reports `missing_seal` | Either seal the file or leave unsealed if not in seal globs |
-| User asks to “remove hashseal noise” | **Refuse** to strip seals; explain integrity purpose |
-
-## Failure UX
-
-When check/verify fails:
-
-- Report **every** non-OK path (never exit-only or first-error-only summaries).
-- Include status (`mismatch`, `missing_seal`, …) and expected/actual digests when present.
-- Do not claim the tree is clean until all listed paths are OK.
-
-## Out of scope
-
-- Do not invent third-party integrity product names or copy their configs.
-- Signature (`hashseal_sig`) verify needs GPG; digest check alone is still valuable.
 
 ```text
 Copyright (c) 2026 MonkeyKing.dev

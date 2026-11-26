@@ -1,0 +1,41 @@
+name: "HashSeal Check"
+description: "Verify sealed AI instruction files, signatures, lockfiles, and Unicode hygiene"
+inputs:
+  root:
+    description: "Project root directory"
+    required: false
+    default: "."
+  require-signature:
+    description: "Require cryptographic signatures (SSH/GPG)"
+    required: false
+    default: "false"
+  diff-base:
+    description: "Optional git base ref for PR diff gate (e.g. origin/main)"
+    required: false
+    default: ""
+  lock:
+    description: "Optional path to .hashseal.lock"
+    required: false
+    default: ""
+  unicode-policy:
+    description: "Suspicious Unicode policy: fail, warn, or off"
+    required: false
+    default: "fail"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Run hashseal check
+      shell: bash
+      run: |
+        ARGS=(check --root "${{ inputs.root }}" --unicode-policy "${{ inputs.unicode-policy }}")
+        if [ "${{ inputs.require-signature }}" = "true" ]; then
+          ARGS+=(--require-signature)
+        fi
+        if [ -n "${{ inputs.diff-base }}" ]; then
+          ARGS+=(--diff "${{ inputs.diff-base }}")
+        fi
+        if [ -n "${{ inputs.lock }}" ]; then
+          ARGS+=(--lock "${{ inputs.lock }}")
+        fi
+        hashseal "${ARGS[@]}"

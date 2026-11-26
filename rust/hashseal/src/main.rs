@@ -144,6 +144,21 @@ enum Commands {
         #[arg(long)]
         ledger: Option<PathBuf>,
     },
+    /// Initialize HashSeal config, hooks, and lockfile in a project
+    Init {
+        #[arg(long, default_value = ".")]
+        root: PathBuf,
+        #[arg(long)]
+        git_hooks: bool,
+        #[arg(long)]
+        in_git_dir: bool,
+        #[arg(long)]
+        claude_hooks: bool,
+        #[arg(long)]
+        lock: bool,
+        #[arg(long)]
+        sign: bool,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -372,6 +387,14 @@ fn run(cli: Cli) -> Result<ExitCode, Box<dyn std::error::Error>> {
             println!("HashSeal: cleaned ledger/report/bundle artifacts");
             Ok(ExitCode::SUCCESS)
         }
+        Commands::Init {
+            root,
+            git_hooks,
+            in_git_dir,
+            claude_hooks,
+            lock,
+            sign,
+        } => run_init(&root, git_hooks, in_git_dir, claude_hooks, lock, sign),
     }
 }
 
@@ -950,5 +973,180 @@ fn run_unseal(root: &Path, paths: &[PathBuf]) -> Result<ExitCode, Box<dyn std::e
         fs::write(&path, out)?;
         println!("unsealed {}", path.display());
     }
+    Ok(ExitCode::SUCCESS)
+}
+
+fn make_executable(path: &Path) {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = fs::set_permissions(path, fs::Permissions::from_mode(0o755));
+    }
+    #[cfg(not(unix))]
+    let _ = path;
+}
+
+fn run_init(
+    root: &Path,
+    git_hooks: bool,
+    in_git_dir: bool,
+    claude_hooks: bool,
+    lock: bool,
+    sign: bool,
+) -> Result<ExitCode, Box<dyn std::error::Error>> {
+    fs::create_dir_all(root)?;
+
+    // 1. .hashseal.json (if absent)
+    let cfg_path = root.join(".hashseal.json");
+    if !cfg_path.exists() {
+        let starter = serde_json::json!({
+            "version": 1,
+            "document": {
+                "enable": true,
+                "canonical": "full",
+                "field": "hashseal",
+                "unicode_policy": "fail"
+            },
+            "signing": {
+                "enable": sign,
+                "require": sign
+            }
+        });
+        fs::write(&cfg_path, serde_json::to_string_pretty(&starter)? + "\n")?;
+        println!("HashSeal: wrote {}", cfg_path.display());
+    }
+
+    // 2. .hashseal/allowed_signers (auto-import git user.signingKey .pub if present)
+    let hs_dir = root.join(".hashseal");
+    fs::create_dir_all(&hs_dir)?;
+    let signers_path = hs_dir.join("allowed_signers");
+    if !signers_path.exists() {
+        let mut content =
+            String::from("# HashSeal allowed signers (<principal> ssh-ed25519 <base64>)\n");
+        let git_opts = SigningOptions::from_git_and_root(Some(root));
+        if let Some(key) = &git_opts.signing_key {
+            let pub_candidate = if key.ends_with(".pub") {
+                PathBuf::from(key)
+            } else {
+                PathBuf::from(format!("{key}.pub"))
+            };
+            if pub_candidate.is_file() {
+                if let Ok(pub_line) = fs::read_to_string(&pub_candidate) {
+                    let email = Command::new("git")
+                        .arg("-C")
+                        .arg(root)
+                        .args(["config", "--get", "user.email"])
+                        .output()
+                        .ok()
+                        .filter(|o| o.status.success())
+                        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+                        .filter(|s| !s.is_empty())
+                        .unwrap_or_else(|| "maintainer@local".to_string());
+                    content.push_str(&format!("{email} {}\n", pub_line.trim()));
+                }
+            }
+        }
+        fs::write(&signers_path, content)?;
+        println!("HashSeal: wrote {}", signers_path.display());
+    }
+
+    // 3. Git pre-commit hook
+    if git_hooks {
+        let hook_body = "#!/usr/bin/env sh\nset -eu\nif command -v hashseal >/dev/null 2>&1; then\n  exec hashseal check --root .\nelif command -v hashseal-check >/dev/null 2>&1; then\n  exec hashseal-check --root .\nelse\n  echo \"hashseal: binary not found on PATH\" >&2\n  exit 1\nfi\n";
+        let hook_path = if in_git_dir {
+            let p = root.join(".git").join("hooks");
+            fs::create_dir_all(&p)?;
+            p.join("pre-commit")
+        } else {
+            let p = root.join(".githooks");
+            fs::create_dir_all(&p)?;
+            if root.join(".git").exists() {
+                let _ = Command::new("git")
+                    .arg("-C")
+                    .arg(root)
+                    .args(["config", "core.hooksPath", ".githooks"])
+                    .status();
+            }
+            p.join("pre-commit")
+        };
+        fs::write(&hook_path, hook_body)?;
+        make_executable(&hook_path);
+        println!("HashSeal: installed git hook {}", hook_path.display());
+    }
+
+    // 4. Claude Code hooks (SessionStart + PreToolUse guard)
+    if claude_hooks {
+        let hooks_dir = hs_dir.join("hooks");
+        fs::create_dir_all(&hooks_dir)?;
+        let guard_path = hooks_dir.join("claude-guard.sh");
+        let guard_script = r#"#!/usr/bin/env sh
+# HashSeal Claude Code guard: block editing human-signed instruction files and check seals.
+set -eu
+if command -v hashseal-check >/dev/null 2>&1; then
+  hashseal-check --root .
+elif command -v hashseal >/dev/null 2>&1; then
+  hashseal check --root .
+fi
+"#;
+        fs::write(&guard_path, guard_script)?;
+        make_executable(&guard_path);
+
+        let claude_dir = root.join(".claude");
+        fs::create_dir_all(&claude_dir)?;
+        let settings_path = claude_dir.join("settings.json");
+        let mut settings: serde_json::Value = if settings_path.is_file() {
+            let raw = fs::read_to_string(&settings_path)?;
+            serde_json::from_str(&raw).unwrap_or_else(|_| serde_json::json!({}))
+        } else {
+            serde_json::json!({})
+        };
+
+        let check_cmd = "if command -v hashseal-check >/dev/null 2>&1; then hashseal-check --root .; else hashseal check --root .; fi";
+        let hooks_obj = settings
+            .as_object_mut()
+            .ok_or("invalid .claude/settings.json")?
+            .entry("hooks")
+            .or_insert_with(|| serde_json::json!({}));
+        if let Some(m) = hooks_obj.as_object_mut() {
+            m.insert(
+                "SessionStart".into(),
+                serde_json::json!([{
+                    "hooks": [{ "type": "command", "command": check_cmd }]
+                }]),
+            );
+            m.insert(
+                "PreToolUse".into(),
+                serde_json::json!([{
+                    "matcher": "Edit|Write",
+                    "hooks": [{ "type": "command", "command": ".hashseal/hooks/claude-guard.sh" }]
+                }]),
+            );
+        }
+        fs::write(
+            &settings_path,
+            serde_json::to_string_pretty(&settings)? + "\n",
+        )?;
+        println!(
+            "HashSeal: configured Claude hooks in {}",
+            settings_path.display()
+        );
+    }
+
+    // 5. Seal instruct files + optional .hashseal.lock (default on init when --lock or no specific hook-only flag)
+    let write_lock = lock || (!git_hooks && !claude_hooks);
+    let cfg = HashSealConfig::load_for_root(root)?;
+    let s_opts = signing_from(root, &cfg, None, None, None, &[])?;
+    let upol = cfg.document_unicode_policy()?;
+    run_seal_instruct(
+        root,
+        &cfg,
+        sign,
+        &s_opts,
+        false,
+        write_lock,
+        upol,
+        OutputFormat::Human,
+    )?;
+
     Ok(ExitCode::SUCCESS)
 }
