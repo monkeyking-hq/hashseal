@@ -6,6 +6,9 @@
 - Opt-in `--gitignore` flag on `hashseal` (`seal`, `check`, `verify`, `unseal`) and `hashseal-check`, plus `walk.respect_gitignore` in `.hashseal.json` (default `false`).
 - Zero-dependency pure-Rust `.gitignore` / `.git/info/exclude` matcher in `hashseal-core::walk` (`WalkOptions`, `walk_files_with`, `walk_entries_with`) supporting root and nested `.gitignore` files, directory pruning, anchored patterns, character classes, and `!` negation.
 
+### Changed
+- Added Gitea release creation and asset upload (`hashseal-x86_64-unknown-linux-gnu.tar.gz` + `SHA256SUMS`) to `.gitea/workflows/release-binaries.yml` on `v*` tag pushes.
+
 ## [0.6.2] - 2026-11-26
 
 ### Fixed

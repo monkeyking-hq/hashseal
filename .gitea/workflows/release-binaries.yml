@@ -52,3 +52,40 @@ jobs:
         with:
           name: hashseal-x86_64-unknown-linux-gnu
           path: dist/
+
+      - name: Publish Gitea release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GITEA_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF#refs/tags/}"
+          API="${GITHUB_SERVER_URL}/api/v1/repos/${GITHUB_REPOSITORY}"
+          AUTH="Authorization: token ${GITEA_TOKEN}"
+          RESP="$(mktemp)"
+          trap 'rm -f "$RESP"' EXIT
+
+          STATUS=$(curl -sS -o "$RESP" -w '%{http_code}' -H "$AUTH" "${API}/releases/tags/${TAG}")
+          if [ "$STATUS" = "404" ]; then
+            curl -fsSL -X POST -H "$AUTH" -H "Content-Type: application/json" \
+              -d "{\"tag_name\":\"${TAG}\",\"name\":\"HashSeal ${TAG}\",\"body\":\"Automated release binaries and SHA256SUMS for ${TAG}.\"}" \
+              "${API}/releases" > "$RESP"
+          elif [ "$STATUS" != "200" ]; then
+            echo "Gitea release lookup failed (HTTP $STATUS)" >&2
+            cat "$RESP" >&2
+            exit 1
+          fi
+
+          REL_ID=$(python3 -c 'import sys, json; print(json.load(sys.stdin)["id"])' < "$RESP")
+
+          # Remove any pre-existing asset with the same name before uploading.
+          ASSETS_JSON="$(curl -fsSL -H "$AUTH" "${API}/releases/${REL_ID}/assets")"
+          for ASSET_ID in $(printf '%s' "$ASSETS_JSON" | python3 -c 'import sys, json; names={"hashseal-x86_64-unknown-linux-gnu.tar.gz","SHA256SUMS"}; print("\n".join(str(a["id"]) for a in json.load(sys.stdin) if a.get("name") in names))'); do
+            curl -fsSL -X DELETE -H "$AUTH" "${API}/releases/${REL_ID}/assets/${ASSET_ID}"
+          done
+
+          for FILE in hashseal-x86_64-unknown-linux-gnu.tar.gz SHA256SUMS; do
+            curl -fsSL -X POST -H "$AUTH" \
+              -F "attachment=@dist/${FILE}" \
+              "${API}/releases/${REL_ID}/assets?name=${FILE}" >/dev/null
+          done
