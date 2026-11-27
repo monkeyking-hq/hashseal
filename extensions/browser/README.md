@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:c31166c55b05fd3ea747f137986816629ae0b6281013928bfc3b8612780ca0b8"
+hashseal: "blake3:a0b7777d34b3c5a412cd7c6179c0f7e25949b39264a2de11be24d91f644dfa50"
 ---
 # HashSeal browser extension (Chrome MV3)
 
@@ -79,7 +79,7 @@ Do not block packaging on WASM or native host.
 
 ```bash
 node extensions/browser/scripts/bundle-from-verify-js.js
-node -e "const a=require('./extensions/browser/lib/hashseal-verify.browser.js'); console.log(a.checkDocumentText('---\\nhashseal: \"blake3:25280e93176b8b5ae3f4c2dd4b8fef7a20c4a626ea8dfd933b0e77b3a240dccb\"\\n---\\n# Hello\\n\\nAgent rules.\\n'))"
+node -e "const a=require('./extensions/browser/lib/hashseal-verify.browser.js'); console.log(a.checkDocumentText('---\\nhashseal: \"blake3:08a635fc990e9aedb6b0690a5feb7147a8b2673027e5635e1849fbe581d271f6\"\\n---\\n# Hello\\n\\nAgent rules.\\n'))"
 ```
 
 Expected: `{ ok: true, status: 'valid', ... }`.

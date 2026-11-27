@@ -1,6 +1,6 @@
 {
   "name": "@hashseal/npm-plugin",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "HashSeal npm plugin — thin wrapper that shells to the hashseal CLI",
   "license": "MIT",
   "main": "index.js",

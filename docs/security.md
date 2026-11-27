@@ -22,7 +22,7 @@ Please do **not** open public issues for unfixed security problems.
 
 ## Scope notes
 
-HashSeal provides **content integrity** for instruction files and trees (digests, optional GPG attestation via your git GPG setup). It does not claim to secure model behavior, prevent all supply-chain attacks, or replace code review.
+HashSeal provides **content integrity, cryptographic trust, and runtime gating** for AI agent instruction files, skill packs, and optional release bundles (`instruct-v2` lossless raw front-matter digests, `signing-v2` OpenSSH `SSHSIG` and hardened GPG signatures with pinned trust roots and context `scope` binding, `.hashseal.lock`, and `SUSPICIOUS_UNICODE` smuggling detection). It does not guarantee how a model will behave or replace code review.
 
 ## Contacts
 
