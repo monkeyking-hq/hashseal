@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:4d7721a7e9d6bf5e246b41245565adaf24cd914d62d174887cbf7b57230bd8e2"
+hashseal: "blake3:67b0ac5d44fd26c34408b310faa07464e31a3f6615fd71ec56350ebe8897f9a4"
 ---
 # HashSeal CLI reference
 
@@ -11,6 +11,32 @@ hashseal: "blake3:4d7721a7e9d6bf5e246b41245565adaf24cd914d62d174887cbf7b57230bd8
 |--------|--------|------|
 | `hashseal` | `hashseal` | Full CLI: `init`, `seal`, `check`, `verify`, `unseal`, `clean` |
 | `hashseal-check` | `hashseal-check` | Tiny instruct-only verify (`blake3` + `std` only) |
+
+## Config (`.hashseal.json`)
+
+JSON only (no TOML crate). Defaults plus optional root overlay `.hashseal.json` (or `--config PATH` / `--overlay PATH`). Example: [`config/examples/hashseal.mvp.json`](../config/examples/hashseal.mvp.json).
+
+| Key | Meaning |
+|-----|---------|
+| `document.enable` | Seal/check instruct files (`true`) |
+| `document.include` | Globs for instruct files (`DEFAULT_DOCUMENT_INCLUDES`: `AGENTS.md`, `CLAUDE.md`, `SKILL.md`, `.cursor/rules/*.mdc`, Copilot/Windsurf/Cline/agent dirs) |
+| `document.exclude` | Globs to skip (includes `target`, `node_modules`, `worktrees`, `.worktrees`) |
+| `document.canonical` | `full` (`instruct-v2` lossless raw-FM) or `body-only` |
+| `document.field` | Seal field name (default `hashseal`) |
+| `document.auto_frontmatter` | Create front matter if absent (`true`) |
+| `document.algorithm` | `blake3` (default) or `sha256` |
+| `document.unicode_policy` | `fail` (default), `warn`, or `off` |
+| `signing.enable` / `signing.require` | Sign on seal / require signature on check |
+| `signing.format` | `auto` (default, from `git config gpg.format`), `ssh`, or `gpg` |
+| `signing.signing_key` | SSH key path or GPG key id/fingerprint |
+| `signing.gpg_program` | GPG binary override |
+| `signing.allowed_signers` | OpenSSH `allowed_signers` path (default `.hashseal/allowed_signers`) |
+| `signing.allowed_key_ids` | GPG fingerprint/key-ID allowlist |
+| `enforce.on_tree_mismatch` / `on_doc_mismatch` / `on_missing_ledger` | `fail` (default) or `warn` |
+| `tree.include` / `tree.exclude` / `tree.line_endings` / `tree.algorithm` / `tree.ledger` / `tree.report` | Tree ledger walk &amp; paths |
+| `report.write` / `pretty` / `include_ci` / `include_hostname` / `max_findings` | JSON audit report options |
+
+Walks always skip `worktrees` and `.worktrees` directory names so nested agent worktrees are never crawled.
 
 ## Commands
 

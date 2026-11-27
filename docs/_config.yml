@@ -4,8 +4,8 @@
 
 title: HashSeal
 description: >-
-  Seal and verify AI instruction files and build trees —
-  what was sealed is what you still have.
+  Cryptographic integrity, trust, and runtime gating for AI agent instruction
+  files and skill packs — what was sealed is what you still have.
 url: https://hashseal.ai
 baseurl: ""
 github_url: https://github.com/monkeyking-hq/hashseal

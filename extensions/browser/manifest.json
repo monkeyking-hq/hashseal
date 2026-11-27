@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "HashSeal Check",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "Check pasted HashSeal-sealed Markdown: valid, MISMATCH, or missing seal (pure JS blake3).",
   "action": {
     "default_title": "HashSeal Check",

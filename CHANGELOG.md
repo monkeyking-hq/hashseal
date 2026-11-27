@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.2] - 2026-11-26
+
+### Fixed
+- Updated `docs/_includes/footer.html` license label from `Apache-2.0` to `MIT` and updated header/footer navigation labels (`Bundles` / `Signed bundles`).
+- Updated `docs/_config.yml` description and `docs/security.md` scope notes to reflect `instruct-v2`, `signing-v2` (SSH + hardened GPG), `.hashseal.lock`, and `SUSPICIOUS_UNICODE`.
+- Restored `.hashseal.json` configuration reference table and worktree-skip notes in `docs/cli.md`.
+- Updated `extensions/browser/README.md` smoke command to the `instruct-v2` digest and refreshed `fixtures/mvp-demo/README.md`.
+
 ## [0.6.1] - 2026-11-26
 
 ### Fixed

@@ -1,6 +1,6 @@
 {
   "name": "@hashseal/verify",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "HashSeal zero-dependency instruct document verify (digest + SSHSIG + Unicode)",
   "license": "MIT",
   "main": "index.js",
