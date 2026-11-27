@@ -4,7 +4,7 @@
 use hashseal_core::instruct::{check_instruct_path_with, CheckOpts, InstructOptions};
 use hashseal_core::result::BatchCheckResult;
 use hashseal_core::signing::SigningOptions;
-use hashseal_core::walk::{any_glob_str, walk_files};
+use hashseal_core::walk::{any_glob_str, walk_files_with, WalkOptions};
 use hashseal_core::{CheckStatus, UnicodePolicy, DEFAULT_DOCUMENT_INCLUDES, VERSION};
 use std::env;
 use std::path::{Path, PathBuf};
@@ -23,6 +23,7 @@ fn main() -> ExitCode {
     let mut digest_only = false;
     let mut allowed_signers: Option<PathBuf> = None;
     let mut unicode_policy = UnicodePolicy::Fail;
+    let mut respect_gitignore = false;
     let mut root = PathBuf::from(".");
 
     let mut args = env::args().skip(1);
@@ -39,6 +40,7 @@ fn main() -> ExitCode {
             "--no-fail" => no_fail = true,
             "--require-signature" => require_signature = true,
             "--digest-only" => digest_only = true,
+            "--gitignore" => respect_gitignore = true,
             "--allowed-signers" => {
                 if let Some(p) = args.next() {
                     allowed_signers = Some(PathBuf::from(p));
@@ -80,7 +82,10 @@ fn main() -> ExitCode {
     }
 
     let files = if paths.is_empty() {
-        walk_files(&root, |rel| any_glob_str(DEFAULT_DOCUMENT_INCLUDES, rel)).unwrap_or_default()
+        walk_files_with(&root, WalkOptions { respect_gitignore }, |rel| {
+            any_glob_str(DEFAULT_DOCUMENT_INCLUDES, rel)
+        })
+        .unwrap_or_default()
     } else {
         paths
             .into_iter()
@@ -159,6 +164,7 @@ fn print_help() {
            --digest-only             Skip signature verification\n\
            --allowed-signers PATH    OpenSSH allowed_signers file\n\
            --unicode-policy MODE     fail (default), warn, or off\n\
+           --gitignore               Respect .gitignore when walking (opt-in; default off)\n\
            -h, --help                Help\n\
            -V, --version             Version\n\n\
          With no PATH args, scans agent instruction files (AGENTS.md, CLAUDE.md,\n\

@@ -20,6 +20,12 @@ pub struct HashSealConfig {
     pub enforce: EnforceConfig,
     pub signing: SigningConfig,
     pub report: ReportConfig,
+    pub walk: WalkConfig,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct WalkConfig {
+    pub respect_gitignore: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -232,6 +238,7 @@ impl Default for HashSealConfig {
             enforce: EnforceConfig::default(),
             signing: SigningConfig::default(),
             report: ReportConfig::default(),
+            walk: WalkConfig::default(),
         }
     }
 }
@@ -380,6 +387,11 @@ impl HashSealConfig {
             }
             if let Some(b) = o.get("pretty").and_then(|x| x.as_bool()) {
                 self.report.pretty = b;
+            }
+        }
+        if let Some(o) = v.get("walk") {
+            if let Some(b) = o.get("respect_gitignore").and_then(|x| x.as_bool()) {
+                self.walk.respect_gitignore = b;
             }
         }
         Ok(())
@@ -535,9 +547,13 @@ mod tests {
                 "include_hostname": true,
                 "max_findings": 42,
                 "pretty": true
+            },
+            "walk": {
+                "respect_gitignore": true
             }
         });
         let mut cfg = HashSealConfig::default();
+        assert!(!cfg.walk.respect_gitignore);
         cfg.merge_overlay_json(&overlay).unwrap();
 
         assert!(cfg.signing.enable);
@@ -577,5 +593,6 @@ mod tests {
         assert!(cfg.report.include_hostname);
         assert_eq!(cfg.report.max_findings, 42);
         assert!(cfg.report.pretty);
+        assert!(cfg.walk.respect_gitignore);
     }
 }

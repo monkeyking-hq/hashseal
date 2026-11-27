@@ -4,7 +4,7 @@ use crate::digest::{Algorithm, Digest};
 use crate::error::{Error, Result};
 use crate::instruct::normalize_lf;
 use crate::timeutil::utc_now_rfc3339;
-use crate::walk::{any_glob, walk_entries, walk_files};
+use crate::walk::{any_glob, walk_entries_with, walk_files_with, WalkOptions};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -66,6 +66,7 @@ pub struct TreeSealOptions {
     pub include: Vec<String>,
     pub exclude: Vec<String>,
     pub line_endings_lf_text: bool,
+    pub respect_gitignore: bool,
 }
 
 impl Default for TreeSealOptions {
@@ -75,6 +76,7 @@ impl Default for TreeSealOptions {
             include: vec!["**/*".into()],
             exclude: crate::config::default_tree_excludes(),
             line_endings_lf_text: true,
+            respect_gitignore: false,
         }
     }
 }
@@ -141,7 +143,10 @@ fn path_excluded(rel: &str, exclude: &[String]) -> bool {
 pub fn collect_tree_files(root: &Path, opts: &TreeSealOptions) -> Result<Vec<PathBuf>> {
     let include = opts.include.clone();
     let exclude = opts.exclude.clone();
-    Ok(walk_files(root, |rel| {
+    let walk_opts = WalkOptions {
+        respect_gitignore: opts.respect_gitignore,
+    };
+    Ok(walk_files_with(root, walk_opts, |rel| {
         if path_excluded(rel, &exclude) {
             return false;
         }
@@ -205,7 +210,10 @@ pub fn verify_tree(
 
     let include = opts.include.clone();
     let exclude = opts.exclude.clone();
-    let entries = walk_entries(root, |rel| {
+    let walk_opts = WalkOptions {
+        respect_gitignore: opts.respect_gitignore,
+    };
+    let entries = walk_entries_with(root, walk_opts, |rel| {
         if path_excluded(rel, &exclude) {
             return false;
         }
@@ -341,6 +349,44 @@ mod tests {
     }
 
     #[test]
+    fn seal_and_verify_tree_respect_gitignore_opt_in() {
+        let d = tempdir().unwrap();
+        fs::write(d.path().join(".gitignore"), "ignored_dir/\n*.tmp\n").unwrap();
+        fs::write(d.path().join("kept.txt"), "ok\n").unwrap();
+        fs::write(d.path().join("scratch.tmp"), "ignore me\n").unwrap();
+        fs::create_dir_all(d.path().join("ignored_dir")).unwrap();
+        fs::write(d.path().join("ignored_dir/a.txt"), "ignore me too\n").unwrap();
+
+        let default_opts = TreeSealOptions::default();
+        let default_ledger = seal_tree(d.path(), &default_opts).unwrap();
+        assert!(default_ledger
+            .entries
+            .iter()
+            .any(|e| e.path == "scratch.tmp"));
+        assert!(default_ledger
+            .entries
+            .iter()
+            .any(|e| e.path == "ignored_dir/a.txt"));
+
+        let gi_opts = TreeSealOptions {
+            respect_gitignore: true,
+            ..TreeSealOptions::default()
+        };
+        let gi_ledger = seal_tree(d.path(), &gi_opts).unwrap();
+        assert!(gi_ledger.entries.iter().any(|e| e.path == "kept.txt"));
+        assert!(!gi_ledger.entries.iter().any(|e| e.path == "scratch.tmp"));
+        assert!(!gi_ledger
+            .entries
+            .iter()
+            .any(|e| e.path == "ignored_dir/a.txt"));
+
+        // Adding another gitignored file keeps verify_tree green when respect_gitignore is true.
+        fs::write(d.path().join("new.tmp"), "still ignored\n").unwrap();
+        let v = verify_tree(d.path(), &gi_ledger, &gi_opts).unwrap();
+        assert!(v.ok, "{:?}", v.findings);
+    }
+
+    #[test]
     fn crlf_lf_same_text_hash() {
         let d = tempdir().unwrap();
         fs::write(d.path().join("a.txt"), "hello\r\nworld\r\n").unwrap();
@@ -459,6 +505,7 @@ mod tests {
                         include,
                         exclude,
                         line_endings_lf_text: lf_text,
+                        respect_gitignore: false,
                     };
                     let mut entries = Vec::new();
                     for e in case["ledger_entries"].as_array().expect("ledger_entries") {
