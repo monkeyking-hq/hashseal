@@ -74,6 +74,9 @@ enum Commands {
         artifacts: Vec<PathBuf>,
         #[arg(long, value_enum)]
         unicode_policy: Option<UnicodePolicyArg>,
+        /// Respect .gitignore files when walking directories (opt-in; default off)
+        #[arg(long)]
+        gitignore: bool,
         #[arg(long, value_enum, default_value_t = OutputFormat::Human)]
         format: OutputFormat,
     },
@@ -98,6 +101,9 @@ enum Commands {
         allowed_signers: Option<PathBuf>,
         #[arg(long = "allowed-key")]
         allowed_keys: Vec<String>,
+        /// Respect .gitignore files when walking directories (opt-in; default off)
+        #[arg(long)]
+        gitignore: bool,
         #[arg(long, value_enum, default_value_t = OutputFormat::Human)]
         format: OutputFormat,
     },
@@ -129,6 +135,9 @@ enum Commands {
         diff: Option<String>,
         #[arg(long, value_enum)]
         unicode_policy: Option<UnicodePolicyArg>,
+        /// Respect .gitignore files when walking directories (opt-in; default off)
+        #[arg(long)]
+        gitignore: bool,
     },
     Unseal {
         #[arg(long)]
@@ -136,6 +145,9 @@ enum Commands {
         paths: Vec<PathBuf>,
         #[arg(long, default_value = ".")]
         root: PathBuf,
+        /// Respect .gitignore files when walking directories (opt-in; default off)
+        #[arg(long)]
+        gitignore: bool,
     },
     /// Remove ledger/report/bundle artifacts
     Clean {
@@ -235,9 +247,11 @@ fn run(cli: Cli) -> Result<ExitCode, Box<dyn std::error::Error>> {
             ledger,
             artifacts,
             unicode_policy,
+            gitignore,
             format,
         } => {
             let cfg = load_config(&root, config.as_deref(), overlay.as_deref())?;
+            let respect_gitignore = gitignore || cfg.walk.respect_gitignore;
             let upol = unicode_policy
                 .map(Into::into)
                 .unwrap_or(cfg.document_unicode_policy()?);
@@ -266,7 +280,17 @@ fn run(cli: Cli) -> Result<ExitCode, Box<dyn std::error::Error>> {
             };
 
             if do_instruct {
-                run_seal_instruct(&root, &cfg, sign, &s_opts, portable, lock, upol, format)?;
+                run_seal_instruct(
+                    &root,
+                    &cfg,
+                    sign,
+                    &s_opts,
+                    portable,
+                    lock,
+                    upol,
+                    respect_gitignore,
+                    format,
+                )?;
             }
             if do_tree || release {
                 run_seal_tree(
@@ -277,6 +301,7 @@ fn run(cli: Cli) -> Result<ExitCode, Box<dyn std::error::Error>> {
                     sign,
                     &s_opts,
                     &artifacts,
+                    respect_gitignore,
                     format,
                 )?;
             }
@@ -295,9 +320,11 @@ fn run(cli: Cli) -> Result<ExitCode, Box<dyn std::error::Error>> {
             digest_only,
             allowed_signers,
             allowed_keys,
+            gitignore,
             format,
         } => {
             let cfg = load_config(&root, config.as_deref(), None)?;
+            let respect_gitignore = gitignore || cfg.walk.respect_gitignore;
             let s_opts = signing_from(
                 &root,
                 &cfg,
@@ -315,6 +342,7 @@ fn run(cli: Cli) -> Result<ExitCode, Box<dyn std::error::Error>> {
                 require_signature || cfg.signing.require,
                 digest_only,
                 &s_opts,
+                respect_gitignore,
                 format,
             )
         }
@@ -332,8 +360,10 @@ fn run(cli: Cli) -> Result<ExitCode, Box<dyn std::error::Error>> {
             allowed_keys,
             diff,
             unicode_policy,
+            gitignore,
         } => {
             let cfg = load_config(&root, config.as_deref(), None)?;
+            let respect_gitignore = gitignore || cfg.walk.respect_gitignore;
             let upol = unicode_policy
                 .map(Into::into)
                 .unwrap_or(cfg.document_unicode_policy()?);
@@ -358,17 +388,21 @@ fn run(cli: Cli) -> Result<ExitCode, Box<dyn std::error::Error>> {
                 diff.as_deref(),
                 &s_opts,
                 upol,
+                respect_gitignore,
             )
         }
         Commands::Unseal {
             instruct,
             paths,
             root,
+            gitignore,
         } => {
             if !instruct {
                 return Err("use --instruct with unseal".into());
             }
-            run_unseal(&root, &paths)
+            let cfg = HashSealConfig::load_for_root(&root).unwrap_or_default();
+            let respect_gitignore = gitignore || cfg.walk.respect_gitignore;
+            run_unseal(&root, &paths, respect_gitignore)
         }
         Commands::Clean { root, ledger } => {
             let cfg = load_config(&root, None, None)?;
@@ -462,6 +496,7 @@ fn collect_md_files(
     paths: &[PathBuf],
     include: &[String],
     exclude: &[String],
+    respect_gitignore: bool,
 ) -> Result<Vec<PathBuf>, Box<dyn std::error::Error>> {
     if !paths.is_empty() {
         return Ok(paths
@@ -482,6 +517,7 @@ fn collect_md_files(
             include.to_vec()
         },
         exclude: exclude.to_vec(),
+        respect_gitignore,
         ..TreeSealOptions::default()
     };
     Ok(hashseal_core::collect_tree_files(root, &opts)?)
@@ -546,6 +582,7 @@ fn run_seal_instruct(
     portable: bool,
     write_lock: bool,
     unicode_policy: UnicodePolicy,
+    respect_gitignore: bool,
     format: OutputFormat,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let sign = sign || cfg.signing.enable;
@@ -556,7 +593,13 @@ fn run_seal_instruct(
         auto_frontmatter: cfg.document.auto_frontmatter,
         unicode_policy,
     };
-    let files = collect_md_files(root, &[], &cfg.document.include, &cfg.document.exclude)?;
+    let files = collect_md_files(
+        root,
+        &[],
+        &cfg.document.include,
+        &cfg.document.exclude,
+        respect_gitignore,
+    )?;
     let mut digests = Vec::new();
     for path in &files {
         let scope = if portable {
@@ -620,6 +663,7 @@ fn run_seal_tree(
     sign: bool,
     signing: &SigningOptions,
     artifacts: &[PathBuf],
+    respect_gitignore: bool,
     format: OutputFormat,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let sign = sign || cfg.signing.enable;
@@ -628,6 +672,7 @@ fn run_seal_tree(
         include: cfg.tree.include.clone(),
         exclude: cfg.tree.exclude.clone(),
         line_endings_lf_text: cfg.tree.line_endings == "lf-text",
+        respect_gitignore,
     };
     let ledger = seal_tree(root, &opts)?;
     let ledger_path = ledger_override
@@ -716,6 +761,7 @@ fn run_verify(
     require_signature: bool,
     digest_only: bool,
     signing: &SigningOptions,
+    respect_gitignore: bool,
     format: OutputFormat,
 ) -> Result<ExitCode, Box<dyn std::error::Error>> {
     let bp = BundlePaths::under(root);
@@ -751,6 +797,7 @@ fn run_verify(
         include: cfg.tree.include.clone(),
         exclude: cfg.tree.exclude.clone(),
         line_endings_lf_text: cfg.tree.line_endings == "lf-text",
+        respect_gitignore,
     };
     let result = if let Some(b) = &bundle_dir {
         let s_opt = if digest_only { None } else { Some(signing) };
@@ -828,6 +875,7 @@ fn run_check(
     diff_base: Option<&str>,
     signing: &SigningOptions,
     unicode_policy: UnicodePolicy,
+    respect_gitignore: bool,
 ) -> Result<ExitCode, Box<dyn std::error::Error>> {
     let instruct_opts = InstructOptions {
         field: cfg.document.field.clone(),
@@ -840,7 +888,13 @@ fn run_check(
     let files = if let Some(base) = diff_base {
         collect_diff_md_files(root, base, &cfg.document.include, &cfg.document.exclude)?
     } else {
-        collect_md_files(root, paths, &cfg.document.include, &cfg.document.exclude)?
+        collect_md_files(
+            root,
+            paths,
+            &cfg.document.include,
+            &cfg.document.exclude,
+            respect_gitignore,
+        )?
     };
 
     let mut results = Vec::new();
@@ -946,7 +1000,11 @@ fn print_finding_human(f: &CheckResult) {
     println!();
 }
 
-fn run_unseal(root: &Path, paths: &[PathBuf]) -> Result<ExitCode, Box<dyn std::error::Error>> {
+fn run_unseal(
+    root: &Path,
+    paths: &[PathBuf],
+    respect_gitignore: bool,
+) -> Result<ExitCode, Box<dyn std::error::Error>> {
     let opts = InstructOptions::default();
     let files = if paths.is_empty() {
         collect_md_files(
@@ -954,6 +1012,7 @@ fn run_unseal(root: &Path, paths: &[PathBuf]) -> Result<ExitCode, Box<dyn std::e
             &[],
             &hashseal_core::default_document_includes(),
             &TreeSealOptions::default().exclude,
+            respect_gitignore,
         )?
     } else {
         paths
@@ -1145,6 +1204,7 @@ fi
         false,
         write_lock,
         upol,
+        cfg.walk.respect_gitignore,
         OutputFormat::Human,
     )?;
 

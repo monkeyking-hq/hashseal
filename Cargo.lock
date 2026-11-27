@@ -146,7 +146,7 @@ dependencies = [
 
 [[package]]
 name = "hashseal"
-version = "0.6.2"
+version = "0.7.0"
 dependencies = [
  "clap",
  "hashseal-core",
@@ -155,14 +155,14 @@ dependencies = [
 
 [[package]]
 name = "hashseal-check"
-version = "0.6.2"
+version = "0.7.0"
 dependencies = [
  "hashseal-core",
 ]
 
 [[package]]
 name = "hashseal-core"
-version = "0.6.2"
+version = "0.7.0"
 dependencies = [
  "blake3",
  "serde",
@@ -172,7 +172,7 @@ dependencies = [
 
 [[package]]
 name = "hashseal-wasm"
-version = "0.6.2"
+version = "0.7.0"
 dependencies = [
  "hashseal-core",
  "wasm-bindgen",

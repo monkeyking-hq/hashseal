@@ -23,8 +23,8 @@ pub use bundle::{
     digest_artifacts, write_bundle, ArtifactDigest, BundleManifest, BundlePaths, BUNDLE_DIR_NAME,
 };
 pub use config::{
-    default_document_includes, default_tree_excludes, HashSealConfig, DEFAULT_DOCUMENT_INCLUDES,
-    DEFAULT_TREE_EXCLUDES,
+    default_document_includes, default_tree_excludes, HashSealConfig, WalkConfig,
+    DEFAULT_DOCUMENT_INCLUDES, DEFAULT_TREE_EXCLUDES,
 };
 pub use digest::{Algorithm, Digest};
 pub use error::Error;
@@ -47,6 +47,7 @@ pub use tree::{
 pub use unicode::{
     format_unicode_findings, scan_suspicious_unicode, UnicodeFinding, UnicodePolicy,
 };
+pub use walk::WalkOptions;
 
 #[cfg(feature = "json")]
 pub use bundle::{read_manifest, sign_bundle, verify_bundle, verify_bundle_with_signing};

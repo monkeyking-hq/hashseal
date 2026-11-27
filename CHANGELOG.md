@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.7.0] - 2026-11-26
+
+### Added
+- Opt-in `--gitignore` flag on `hashseal` (`seal`, `check`, `verify`, `unseal`) and `hashseal-check`, plus `walk.respect_gitignore` in `.hashseal.json` (default `false`).
+- Zero-dependency pure-Rust `.gitignore` / `.git/info/exclude` matcher in `hashseal-core::walk` (`WalkOptions`, `walk_files_with`, `walk_entries_with`) supporting root and nested `.gitignore` files, directory pruning, anchored patterns, character classes, and `!` negation.
+
 ## [0.6.2] - 2026-11-26
 
 ### Fixed

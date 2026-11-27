@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:67b0ac5d44fd26c34408b310faa07464e31a3f6615fd71ec56350ebe8897f9a4"
+hashseal: "blake3:ed7b97c478c8864e1147fad624b5655eaafd89528d9b597c437050939cfe3f07"
 ---
 # HashSeal CLI reference
 
@@ -34,6 +34,7 @@ JSON only (no TOML crate). Defaults plus optional root overlay `.hashseal.json` 
 | `signing.allowed_key_ids` | GPG fingerprint/key-ID allowlist |
 | `enforce.on_tree_mismatch` / `on_doc_mismatch` / `on_missing_ledger` | `fail` (default) or `warn` |
 | `tree.include` / `tree.exclude` / `tree.line_endings` / `tree.algorithm` / `tree.ledger` / `tree.report` | Tree ledger walk &amp; paths |
+| `walk.respect_gitignore` | Honor `.gitignore` &amp; `.git/info/exclude` during directory walks (`false` by default; opt-in so untrusted `.gitignore` edits cannot silently hide instruction files in CI) |
 | `report.write` / `pretty` / `include_ci` / `include_hostname` / `max_findings` | JSON audit report options |
 
 Walks always skip `worktrees` and `.worktrees` directory names so nested agent worktrees are never crawled.
@@ -48,26 +49,27 @@ hashseal init [--root DIR] [--git-hooks] [--in-git-dir] [--claude-hooks] [--lock
 
 ### `hashseal seal`
 ```bash
-hashseal seal --instruct [--sign] [--sign-format auto|ssh|gpg] [--portable] [--lock] [--unicode-policy fail|warn|off] [--root DIR]
-hashseal seal --tree [--release] [--sign] [--artifact PATH]... [--root DIR]
+hashseal seal --instruct [--sign] [--sign-format auto|ssh|gpg] [--portable] [--lock] [--unicode-policy fail|warn|off] [--gitignore] [--root DIR]
+hashseal seal --tree [--release] [--sign] [--gitignore] [--artifact PATH]... [--root DIR]
 ```
 
 ### `hashseal check`
 ```bash
-hashseal check [--root DIR] [--require-signature] [--digest-only] [--lock PATH | --no-lock] [--diff BASE_REF] [--allowed-signers PATH] [--allowed-key ID]... [--unicode-policy fail|warn|off] [--no-fail] [--format human|json] [PATH...]
+hashseal check [--root DIR] [--require-signature] [--digest-only] [--lock PATH | --no-lock] [--diff BASE_REF] [--allowed-signers PATH] [--allowed-key ID]... [--unicode-policy fail|warn|off] [--gitignore] [--no-fail] [--format human|json] [PATH...]
 ```
 - Auto-detects `.hashseal.lock` at `--root` (unless `--no-lock`, `--diff`, or explicit `PATH...` args are given).
+- `hashseal-check` also supports `--gitignore`.
 - Exit codes: `0` ok, `1` findings (`MISMATCH`, `MISSING_SEAL`, `MISSING_SIGNATURE`, `BAD_SIGNATURE`, `UNTRUSTED_KEY`, `UNVERIFIED_SIGNATURE`, `SUSPICIOUS_UNICODE`, `LOCKED_FILE_REMOVED`, `UNAPPROVED_FILE`), `2` usage, `3` hard error.
 
 ### `hashseal verify`
 Verify tree ledger and `hashseal-bundle/` (`MANIFEST.json`, `ledger_digest`, `--artifact` digests, and optional `MANIFEST.json.sig`):
 ```bash
-hashseal verify [--root DIR] [--bundle DIR] [--ledger PATH] [--require-signature] [--digest-only] [--no-fail] [--format human|json]
+hashseal verify [--root DIR] [--bundle DIR] [--ledger PATH] [--require-signature] [--digest-only] [--gitignore] [--no-fail] [--format human|json]
 ```
 
 ### `hashseal unseal --instruct` / `hashseal clean`
 ```bash
-hashseal unseal --instruct [--root DIR] [PATH...]
+hashseal unseal --instruct [--gitignore] [--root DIR] [PATH...]
 hashseal clean [--root DIR]
 ```
 
