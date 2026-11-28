@@ -2,7 +2,7 @@
 layout: default
 title: Instruct seal format
 permalink: /instruct/format/
-hashseal: "blake3:e6a54d305b2c957836a878eae44f13acb522f83987ede375d058e1a62e06b5c1"
+hashseal: "blake3:04c917bd84ab76dc80efef5b723abc8f8d2d2fbaba21ccbe18487fa293841cce"
 ---
 
 # Instruct seal format (`instruct-v2`)
@@ -44,5 +44,5 @@ By default (`unicode_policy: "fail"`), `seal` and `check` reject Unicode Tag (`U
 Official cases: [`verify/vectors/instruct-v2.json`](../../verify/vectors/instruct-v2.json) (19 cases).
 
 ```text
-Copyright (c) 2026 MonkeyKing.dev
+Copyright (c) 2026 Nathan A. Chadwick
 ```

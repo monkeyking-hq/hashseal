@@ -2,7 +2,7 @@
 layout: default
 title: Agent instruction file integrity seal
 permalink: /instruct/
-hashseal: "blake3:16851fd18462f90ce70358277e68deeee04c2aa88bed701c51d69748110ab7f3"
+hashseal: "blake3:8e8ec11224e4fbb3022c8d49559b847516d3819c6bdb8bfe2b6c713c3e4b0887"
 ---
 
 # Agent instruction file integrity seal (`instruct-v2`)
@@ -24,6 +24,8 @@ hashseal seal --instruct --sign --lock --root .
 hashseal check --root . --require-signature
 ```
 
+{% include demo.html name="tamper-and-unicode" alt="HashSeal YAML policy tamper and Unicode smuggling detection demo" %}
+
 ## Docs in this section
 
 | Page | Topic |
@@ -34,5 +36,5 @@ hashseal check --root . --require-signature
 | [CLI](../cli.md) | `init`, `seal`, `check`, `verify`, `unseal`, `clean` |
 
 ```text
-Copyright (c) 2026 MonkeyKing.dev
+Copyright (c) 2026 Nathan A. Chadwick
 ```

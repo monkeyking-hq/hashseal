@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:acb6f939f69c04989ddcbdb23e88ae17819f8d591ffa0cd36ec07df7ed11cb34"
+hashseal: "blake3:5e305602a93ff03aaaa2fac9e4bf6cdcc1ee4bbbdf83e5dad8b50a18a07e58ea"
 ---
 # Packaging notes
 
@@ -11,11 +11,12 @@ hashseal: "blake3:acb6f939f69c04989ddcbdb23e88ae17819f8d591ffa0cd36ec07df7ed11cb
 2. Keep Tier-1 verify SDKs (`verify/js`, `verify/python`, `verify/go`) zero-external-dep.
 3. Keep `hashseal-check` minimal: `hashseal-core/check` + `blake3` + `std` only (`cargo tree -p hashseal-check --edges normal`).
 
-## Release workflow
+## Release & Crates.io
 
-- Gitea Actions: [`.gitea/workflows/release-binaries.yml`](../.gitea/workflows/release-binaries.yml) builds `hashseal` + `hashseal-check`, smoke-tests `--version`, packages `.tar.gz`, and writes `SHA256SUMS`.
-- Local helper: [`scripts/build-release.sh`](../scripts/build-release.sh) builds `--release` binaries and emits `SHA256SUMS`.
+- **Crates.io:** `hashseal-core`, `hashseal`, `hashseal-check`, and `hashseal-wasm` are published on [crates.io](https://crates.io/crates/hashseal).
+- **Gitea Actions:** [`.gitea/workflows/release-binaries.yml`](../.gitea/workflows/release-binaries.yml) builds `hashseal` + `hashseal-check`, smoke-tests `--version`, packages `.tar.gz`, and writes `SHA256SUMS`.
+- **Local helper:** [`scripts/build-release.sh`](../scripts/build-release.sh) builds `--release` binaries and emits `SHA256SUMS`.
 
 ```text
-Copyright (c) 2026 MonkeyKing.dev
+Copyright (c) 2026 Nathan A. Chadwick
 ```

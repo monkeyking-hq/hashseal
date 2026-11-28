@@ -2,11 +2,13 @@
 
 **Signed, Sealed, Delivered - I'm Yours.**
 
-**Website:** [hashseal.ai](https://hashseal.ai) — public docs from [`docs/`](docs/). See [`docs/index.md`](docs/index.md).
+**Version 0.7.1** · [Documentation & Video Demos](https://hashseal.ai) · [Runnable Examples](examples/cli/) · [crates.io](https://crates.io/crates/hashseal)
 
 HashSeal provides **cryptographic integrity, trust, and runtime gating for AI agent instruction files and skill packs** (`AGENTS.md`, `CLAUDE.md`, `SKILL.md`, `.cursor/rules/*.mdc`, Copilot/Windsurf/Cline rules), plus optional signed release bundles.
 
 **What was sealed is what you still have** — and verify tools always name every file that changed.
+
+![HashSeal terminal demo](https://hashseal.ai/assets/demos/overview.gif)
 
 | | |
 |--|--|
@@ -18,7 +20,7 @@ HashSeal provides **cryptographic integrity, trust, and runtime gating for AI ag
 
 ## Why HashSeal
 
-| Threat | Without HashSeal | With HashSeal (`v0.6.0`) |
+| Threat | Without HashSeal | With HashSeal (`v0.7.1`) |
 |---|---|---|
 | Silent prompt/policy edits | Agents or PRs rewrite `AGENTS.md` / `SKILL.md` | `MISMATCH` with expected vs actual BLAKE3 digests |
 | YAML policy bypass | Altering `globs:` or `tools:` lists goes unnoticed | `instruct-v2` hashes raw front matter verbatim |
@@ -34,13 +36,15 @@ HashSeal provides **cryptographic integrity, trust, and runtime gating for AI ag
 ### 1. Install
 
 ```bash
-# Release archive (Linux / macOS) with SHA256SUMS verification:
+# Install from crates.io (recommended):
+cargo install hashseal --locked
+cargo install hashseal-check --locked
+
+# Or download a release archive (Linux / macOS) with SHA256SUMS verification:
 ./scripts/install.sh
-# Or build from source:
-./scripts/install.sh --from-source
 ```
 
-See [docs/install.md](docs/install.md) for Windows (`scripts/install.ps1`) and `cargo install`.
+See [docs/install.md](docs/install.md) for Windows (`scripts/install.ps1`) and building from source.
 
 ### 2. Bootstrap a repository
 

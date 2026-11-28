@@ -10,12 +10,19 @@ GitHub Pages source for **[hashseal.ai](https://hashseal.ai)**.
 | `_includes/header.html`, `footer.html` | Chrome |
 | `assets/css/site.css` | Single stylesheet (no remote theme) |
 | `assets/logo/` | Mark, wordmark, **Verified by HashSeal** SVGs |
+| `tapes/` | Declarative Charmbracelet VHS `.tape` files (rendered by CI into `assets/demos/`) |
 | `index.md` | Marketing home |
 | `instruct/`, `build/` | Product docs hubs |
 
 Do **not** commit a `CNAME` until the custom domain is verified and DNS is ready — a repo `CNAME` forces Pages onto that host and can block the GitHub domain-verification TXT flow.
 
 ## Local preview
+
+Record terminal demos locally (requires Docker and `x86_64-unknown-linux-musl`):
+
+```bash
+./scripts/record-demos.sh
+```
 
 With Ruby + Bundler (optional):
 
@@ -30,7 +37,7 @@ Or open the Markdown as source and rely on GitHub’s Pages build after push.
 
 ## Deploy
 
-1. Repo **Settings → Pages → Build from branch**, folder **`/docs`**.
+1. Repo **Settings → Pages → Source**: **GitHub Actions** (built by [`.github/workflows/pages.yml`](../.github/workflows/pages.yml), which records `docs/tapes/*.tape` into `docs/assets/demos/` and builds Jekyll from `docs/`).
 2. **`_config.yml`:**
    - Custom domain (**current**): `url: https://hashseal.ai` and `baseurl: ""`
    - Project pages only (no custom domain): `url: https://monkeyking-hq.github.io` and `baseurl: /hashseal`
@@ -48,5 +55,5 @@ Or open the Markdown as source and rely on GitHub’s Pages build after push.
 Strategic agent planning lives under **`.hashseal-local/planning/`** (gitignored), not in this tree.
 
 ```text
-Copyright (c) 2026 MonkeyKing.dev
+Copyright (c) 2026 Nathan A. Chadwick
 ```

@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:c72c15371232f80c5e84d18a95944d2848e6af5a8437f50d7a87a0f981196a66"
+hashseal: "blake3:3f3d9568d6cfd68e4e5244f6f6c39de606a73b690c565fb491f6fb518381a886"
 ---
 # HashSeal CLI wrappers &amp; integrations
 
@@ -16,5 +16,5 @@ Thin wrappers invoke the **`hashseal` CLI** (`PATH` or `HASHSEAL_BIN`); all inte
 For in-process verification without the CLI, use the Tier-1 SDKs under `verify/js`, `verify/python`, or `verify/go`.
 
 ```text
-Copyright (c) 2026 MonkeyKing.dev
+Copyright (c) 2026 Nathan A. Chadwick
 ```

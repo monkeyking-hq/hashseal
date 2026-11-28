@@ -504,6 +504,50 @@ pre code {
 
 /* Utility */
 
+/* Demo video & screenshot embeds */
+
+.demo-media {
+  margin: 1.25rem 0 1.5rem;
+}
+
+.demo-media video,
+.demo-media > img {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-elev);
+}
+
+.demo-media__shot {
+  margin-top: 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-elev);
+  padding: 0.5rem 0.85rem;
+}
+
+.demo-media__shot summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.9rem;
+  user-select: none;
+}
+
+.demo-media__shot summary:hover {
+  color: var(--text);
+}
+
+.demo-media__shot img {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  margin-top: 0.75rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
 .muted {
   color: var(--muted);
 }

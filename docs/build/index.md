@@ -19,5 +19,5 @@ hashseal verify --root . --require-signature
 Official tree vectors: [`verify/vectors/tree-v1.json`](../../verify/vectors/tree-v1.json) (12 cases).
 
 ```text
-Copyright (c) 2026 MonkeyKing.dev
+Copyright (c) 2026 Nathan A. Chadwick
 ```

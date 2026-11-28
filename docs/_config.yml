@@ -21,6 +21,7 @@ plugins: []
 # On GitHub Pages, relative links work via built-in support; keep paths repo-relative in content.
 
 exclude:
+  - tapes
   - BUILD-PROGRESS.md
   - BUILD-STANDING-ORDERS.md
   - MVP-BACKLOG.md
