@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:bf55c014b688139b1ff6e3005ea97087c9790e9a35b6ebbfdd765e3af06e3e44"
+hashseal: "blake3:fdba53bb3f558b702caeae893713bdce86810c425a6ee426104cc1e146a147d7"
 ---
 This project follows the Universal Code v1.0.0 — read https://github.com/monkeyking-hq/universal-code/blob/main/UC-EMBED-v1.0.0.md
 
@@ -21,7 +21,7 @@ This project follows the Universal Code v1.0.0 — read https://github.com/monke
 2. **Core-first:** Integrity logic lives in `hashseal-core`. Plugins and extensions are thin adapters.
 3. **Verify UX:** Failures must list **every** non-OK path with status and digests—never silent exit-only fails.
 4. **TDD:** Vectors and tests first for seal/check behavior; Tier-1 SDKs (`verify/js`, `verify/python`, `verify/go`) must share `verify/vectors/{instruct-v2,signing-v2,tree-v1}.json`.
-5. **Branding:** Product voice is HashSeal. `Copyright (c) 2026 Nathan A Chadwick`
+5. **Branding:** Product voice is HashSeal. `Copyright (c) 2026 Nathan A. Chadwick`
 6. **Contacts:** `info@hashseal.ai` (general), `security@hashseal.ai` (security).
 7. **License:** MIT.
 8. **CLI vocabulary:** Prefer `--instruct` (not `--docs`) for agent instruction sealing.

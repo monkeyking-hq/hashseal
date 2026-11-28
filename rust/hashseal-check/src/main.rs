@@ -1,5 +1,5 @@
 //! Tiny HashSeal check — no clap, no walkdir; core `check` feature only.
-//! Copyright (c) 2026 MonkeyKing.dev
+//! Copyright (c) 2026 Nathan A. Chadwick
 
 use hashseal_core::instruct::{check_instruct_path_with, CheckOpts, InstructOptions};
 use hashseal_core::result::BatchCheckResult;

@@ -9,13 +9,15 @@ authors.workspace = true
 rust-version.workspace = true
 description = "HashSeal CLI — seal and verify agent instructions and build trees"
 readme = "README.md"
+keywords = ["integrity", "blake3", "ai-agents", "security", "cli"]
+categories = ["command-line-utilities", "cryptography", "development-tools"]
 
 [[bin]]
 name = "hashseal"
 path = "src/main.rs"
 
 [dependencies]
-hashseal-core = { workspace = true, default-features = true }
+hashseal-core = { workspace = true, features = ["full"] }
 # clap is the heaviest CLI dep — acceptable for full `hashseal`, not for check
 clap = { version = "4.5", default-features = false, features = [
     "std",

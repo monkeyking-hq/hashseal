@@ -452,7 +452,9 @@ mod tests {
     /// Frozen multi-language tree vectors — digests must match core seal/verify.
     #[test]
     fn official_vectors_tree_v1() {
-        let path = crate::test_paths::monorepo_path("verify/vectors/tree-v1.json");
+        let Some(path) = crate::test_paths::try_monorepo_path("verify/vectors/tree-v1.json") else {
+            return;
+        };
         let raw =
             fs::read_to_string(&path).unwrap_or_else(|e| panic!("load {}: {e}", path.display()));
         let doc: serde_json::Value =

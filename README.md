@@ -105,5 +105,5 @@ python3 verify/python/test/test_vectors.py && python3 verify/python/test/test_tr
 Follows [Universal Code](https://github.com/monkeyking-hq/universal-code). Released under the [MIT License](LICENSE).
 
 ```text
-Copyright (c) 2026 Nathan A Chadwick
+Copyright (c) 2026 Nathan A. Chadwick
 ```

@@ -553,7 +553,10 @@ mod tests {
     /// Frozen multi-language vectors — digests must match core FULL mode (instruct-v2).
     #[test]
     fn official_vectors_instruct_v2() {
-        let path = crate::test_paths::monorepo_path("verify/vectors/instruct-v2.json");
+        let Some(path) = crate::test_paths::try_monorepo_path("verify/vectors/instruct-v2.json")
+        else {
+            return;
+        };
         let raw =
             fs::read_to_string(&path).unwrap_or_else(|e| panic!("load {}: {e}", path.display()));
         let doc: serde_json::Value =
@@ -959,7 +962,10 @@ mod tests {
         if !has_ssh {
             return;
         }
-        let path = crate::test_paths::monorepo_path("verify/vectors/signing-v2.json");
+        let Some(path) = crate::test_paths::try_monorepo_path("verify/vectors/signing-v2.json")
+        else {
+            return;
+        };
         let raw =
             fs::read_to_string(&path).unwrap_or_else(|e| panic!("load {}: {e}", path.display()));
         let doc: serde_json::Value = serde_json::from_str(&raw).unwrap();

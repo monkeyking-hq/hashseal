@@ -1,5 +1,5 @@
 //! HashSeal CLI — Signed, Sealed, Delivered - I'm Yours.
-//! Copyright (c) 2026 MonkeyKing.dev
+//! Copyright (c) 2026 Nathan A. Chadwick
 
 use clap::{Parser, Subcommand, ValueEnum};
 use hashseal_core::bundle::{

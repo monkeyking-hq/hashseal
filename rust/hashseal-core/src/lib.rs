@@ -1,7 +1,7 @@
 //! HashSeal core — minimal dependencies (blake3 + optional serde_json).
 //!
 //! Signed, Sealed, Delivered - I'm Yours.
-//! Copyright (c) 2026 MonkeyKing.dev
+//! Copyright (c) 2026 Nathan A. Chadwick
 
 pub mod bundle;
 pub mod config;
@@ -68,24 +68,21 @@ pub(crate) mod test_paths {
 
     /// Walk up from this crate until the monorepo root is found
     /// (directory containing workspace `Cargo.toml` and `verify/vectors/`).
-    pub fn monorepo_root() -> PathBuf {
-        let start = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        let mut dir = start.clone();
+    /// Returns `None` when running outside the monorepo (e.g. unpacked crates.io tarball).
+    pub fn try_monorepo_root() -> Option<PathBuf> {
+        let mut dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         loop {
             if dir.join("Cargo.toml").is_file() && dir.join("verify").join("vectors").is_dir() {
-                return dir;
+                return Some(dir);
             }
             if !dir.pop() {
-                panic!(
-                    "could not find monorepo root from CARGO_MANIFEST_DIR={}",
-                    start.display()
-                );
+                return None;
             }
         }
     }
 
-    /// Path relative to the monorepo root, e.g. `verify/vectors/instruct-v1.json`.
-    pub fn monorepo_path(rel: impl AsRef<Path>) -> PathBuf {
-        monorepo_root().join(rel)
+    /// Path relative to the monorepo root, e.g. `verify/vectors/instruct-v2.json`.
+    pub fn try_monorepo_path(rel: impl AsRef<Path>) -> Option<PathBuf> {
+        try_monorepo_root().map(|root| root.join(rel))
     }
 }

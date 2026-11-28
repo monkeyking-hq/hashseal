@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.7.1] - 2026-11-28
+
+### Changed
+- Prepared workspace crates (`hashseal-core`, `hashseal`, `hashseal-check`, `hashseal-wasm`) for crates.io publishing: bumped workspace version to `0.7.1`, added versioned `workspace = true` dependency declarations, added `keywords`/`categories` metadata, and replaced stub crate READMEs with crates.io-ready documentation.
+- Made `hashseal-core` monorepo vector tests (`official_vectors_instruct_v2`, `official_vectors_signing_v2`, `official_vectors_tree_v1`) skip gracefully when `verify/vectors/` is absent (such as in an unpacked crates.io tarball).
+- Standardized copyright notices to `Copyright (c) 2026 Nathan A. Chadwick`.
+
+### Added
+- Expanded `hashseal-wasm` unit tests covering `check_text_json` (`valid`, `missing_seal`, `mismatch`, `suspicious_unicode`, JSON escaping) and `version()`, and verified `wasm32-unknown-unknown` release compilation.
+
 ## [0.7.0] - 2026-11-26
 
 ### Added

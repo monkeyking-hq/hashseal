@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:ff04dafb05194570dbb45dd0ed70dab82597de1824af62940e0f9d95f3c87e22"
+hashseal: "blake3:840fc36072db6466d8164aceafe17caa2165301068de0d7315f9210c98429a98"
 ---
 # Installing HashSeal binaries
 
@@ -44,5 +44,5 @@ cargo install --path rust/hashseal-check --locked
 CI release workflow: [`.gitea/workflows/release-binaries.yml`](../.gitea/workflows/release-binaries.yml).
 
 ```text
-Copyright (c) 2026 MonkeyKing.dev
+Copyright (c) 2026 Nathan A. Chadwick
 ```
