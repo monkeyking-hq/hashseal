@@ -9,11 +9,13 @@ authors.workspace = true
 rust-version.workspace = true
 description = "HashSeal WASM verify surface"
 readme = "README.md"
+keywords = ["integrity", "blake3", "ai-agents", "security", "wasm"]
+categories = ["wasm", "cryptography"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 # WASM: digest check only — same minimal core as hashseal-check
-hashseal-core = { path = "../hashseal-core", default-features = false, features = ["check"] }
+hashseal-core = { workspace = true, features = ["check"] }
 wasm-bindgen = "0.2"

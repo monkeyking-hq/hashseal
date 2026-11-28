@@ -1,6 +1,6 @@
 //! HashSeal WASM / embedded verify API (`wasm-bindgen`).
 //!
-//! Copyright (c) 2026 MonkeyKing.dev
+//! Copyright (c) 2026 Nathan A. Chadwick
 
 use hashseal_core::instruct::{check_instruct_bytes, InstructOptions};
 use hashseal_core::result::CheckResult;
@@ -89,5 +89,36 @@ mod tests {
         let j = check_text_json(&sealed);
         assert!(j.contains("\"ok\":true"));
         assert!(j.contains("\"status\":\"valid\""));
+    }
+
+    #[test]
+    fn check_missing_seal_and_mismatch() {
+        let missing = check_text_json("# no seal here\n");
+        assert!(missing.contains("\"ok\":false"));
+        assert!(missing.contains("\"status\":\"missing_seal\""));
+
+        let opts = InstructOptions::default();
+        let (sealed, _) = seal_instruct_bytes("# original\n", &opts).unwrap();
+        let tampered = sealed.replace("# original", "# tampered");
+        let mismatch = check_text_json(&tampered);
+        assert!(mismatch.contains("\"ok\":false"));
+        assert!(mismatch.contains("\"status\":\"mismatch\""));
+        assert!(mismatch.contains("\"expected\":\"blake3:"));
+        assert!(mismatch.contains("\"actual\":\"blake3:"));
+    }
+
+    #[test]
+    fn check_suspicious_unicode_and_json_escaping() {
+        let bidi = check_text_json("# hello \u{202e}world\n");
+        assert!(bidi.contains("\"ok\":false"));
+        assert!(bidi.contains("\"status\":\"suspicious_unicode\""));
+
+        let escaped = json_escape("a\"b\\c\nd\re\tf");
+        assert_eq!(escaped, "\"a\\\"b\\\\c\\nd\\re\\tf\"");
+    }
+
+    #[test]
+    fn version_matches_pkg_version() {
+        assert_eq!(version(), env!("CARGO_PKG_VERSION"));
     }
 }

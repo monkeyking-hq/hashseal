@@ -1,12 +1,29 @@
----
-hashseal: "blake3:6df50cc1894eebd273b8b9d55a135cb579ed146ce7d5c8676a839ef39cf3768c"
----
 # hashseal-check
 
-Tiny verify-only binary for instruct seals.
+Tiny verify-only [HashSeal](https://hashseal.ai) binary for `instruct-v2` seals, Unicode smuggling checks, and signatures.
 
-**Dependency policy:** `hashseal-core` with `check` feature only → **blake3** (+ its tiny pure helpers). No clap, serde, walkdir, or git.
+**Dependency policy:** `hashseal-core` with `check` feature only (`blake3` + `std` — no `clap`, `serde`, `serde_json`, `walkdir`, or `git`).
+
+**Signed, Sealed, Delivered - I'm Yours.**
+
+## Install
+
+```bash
+cargo install hashseal-check
+```
+
+## Usage
+
+```bash
+hashseal-check --root .
+```
+
+## Links
+
+- Website: <https://hashseal.ai>
+- Repository: <https://github.com/monkeyking-hq/hashseal>
+- License: MIT
 
 ```text
-Copyright (c) 2026 MonkeyKing.dev
+Copyright (c) 2026 Nathan A. Chadwick
 ```
