@@ -24,6 +24,11 @@ description: Cryptographic integrity, trust, and runtime gating for AI agent ins
 </section>
 
 <section class="section">
+  <h2>See It in Action</h2>
+  {% include demo.html name="overview" alt="HashSeal init, seal, and tamper detection demo" %}
+</section>
+
+<section class="section">
   <h2>Core Capabilities</h2>
   <div class="grid-2">
     <article class="card card--lead">

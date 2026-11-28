@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:f0d56d10ea0cf7901a95471c0bf73a9b4b3a34a626abe549d69cc459220f3bab"
+hashseal: "blake3:559bf05ca47677b4eb4d8a0550abf5a5f907b51f84036c8b4c12b867bed86ee6"
 ---
 # Signing on top of sealing (`signing-v2`)
 
@@ -37,6 +37,8 @@ hashseal check --root . --require-signature
 hashseal check --diff origin/main --require-signature
 ```
 
+{% include demo.html name="ssh-signing" alt="HashSeal SSH signing and cross-file replay protection demo" %}
+
 ```text
-Copyright (c) 2026 MonkeyKing.dev
+Copyright (c) 2026 Nathan A. Chadwick
 ```

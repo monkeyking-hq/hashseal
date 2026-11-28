@@ -1,11 +1,18 @@
 ---
-hashseal: "blake3:840fc36072db6466d8164aceafe17caa2165301068de0d7315f9210c98429a98"
+hashseal: "blake3:f46575fb7e190f82181a521fe9587d0baa261bb927866edc37ce5df5d3db7f49"
 ---
 # Installing HashSeal binaries
 
 **Signed, Sealed, Delivered - I'm Yours.**
 
-## Installer scripts (recommended)
+## Install from crates.io (recommended)
+
+```bash
+cargo install hashseal --locked
+cargo install hashseal-check --locked
+```
+
+## Installer scripts
 
 Download prebuilt release binaries and verify `SHA256SUMS`:
 

@@ -32,5 +32,5 @@ HashSeal provides **content integrity, cryptographic trust, and runtime gating**
 | General | [info@hashseal.ai](mailto:info@hashseal.ai) |
 
 ```text
-Copyright (c) 2026 MonkeyKing.dev
+Copyright (c) 2026 Nathan A. Chadwick
 ```

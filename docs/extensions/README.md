@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:d387659cd514ec8dfc751911bde79d4283046da9232eb887ea63859454bfe3dc"
+hashseal: "blake3:09edf23f7c68035cef2b716f360012c3824d89101c17d933fb480ea1d37126fe"
 ---
 # HashSeal IDE / browser extensions
 
@@ -17,5 +17,5 @@ node extensions/browser/scripts/bundle-from-verify-js.js
 ```
 
 ```text
-Copyright (c) 2026 MonkeyKing.dev
+Copyright (c) 2026 Nathan A. Chadwick
 ```

@@ -1,0 +1,10 @@
+<figure class="demo-media">
+  <video autoplay loop muted playsinline controls>
+    <source src="{{ '/assets/demos/' | append: include.name | append: '.webm' | relative_url }}" type="video/webm" />
+    <img src="{{ '/assets/demos/' | append: include.name | append: '.gif' | relative_url }}" alt="{{ include.alt }}" />
+  </video>
+  <details class="demo-media__shot">
+    <summary>Terminal screenshot</summary>
+    <img src="{{ '/assets/demos/' | append: include.name | append: '.png' | relative_url }}" alt="{{ include.alt }} screenshot" loading="lazy" />
+  </details>
+</figure>

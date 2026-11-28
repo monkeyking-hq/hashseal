@@ -1,5 +1,5 @@
 ---
-hashseal: "blake3:ed7b97c478c8864e1147fad624b5655eaafd89528d9b597c437050939cfe3f07"
+hashseal: "blake3:668becd498e30c4c9f87e73c302385557e00f2de9da87b61960ae9749fa1b222"
 ---
 # HashSeal CLI reference
 
@@ -47,6 +47,8 @@ Bootstrap `.hashseal.json`, `.hashseal/allowed_signers`, hooks, and `.hashseal.l
 hashseal init [--root DIR] [--git-hooks] [--in-git-dir] [--claude-hooks] [--lock] [--sign]
 ```
 
+{% include demo.html name="init-and-lockfile" alt="HashSeal init, hooks, and lockfile enforcement demo" %}
+
 ### `hashseal seal`
 ```bash
 hashseal seal --instruct [--sign] [--sign-format auto|ssh|gpg] [--portable] [--lock] [--unicode-policy fail|warn|off] [--gitignore] [--root DIR]
@@ -61,6 +63,8 @@ hashseal check [--root DIR] [--require-signature] [--digest-only] [--lock PATH |
 - `hashseal-check` also supports `--gitignore`.
 - Exit codes: `0` ok, `1` findings (`MISMATCH`, `MISSING_SEAL`, `MISSING_SIGNATURE`, `BAD_SIGNATURE`, `UNTRUSTED_KEY`, `UNVERIFIED_SIGNATURE`, `SUSPICIOUS_UNICODE`, `LOCKED_FILE_REMOVED`, `UNAPPROVED_FILE`), `2` usage, `3` hard error.
 
+{% include demo.html name="check-and-json" alt="hashseal-check and JSON output demo" %}
+
 ### `hashseal verify`
 Verify tree ledger and `hashseal-bundle/` (`MANIFEST.json`, `ledger_digest`, `--artifact` digests, and optional `MANIFEST.json.sig`):
 ```bash
@@ -74,5 +78,5 @@ hashseal clean [--root DIR]
 ```
 
 ```text
-Copyright (c) 2026 MonkeyKing.dev
+Copyright (c) 2026 Nathan A. Chadwick
 ```

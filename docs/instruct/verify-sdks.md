@@ -2,7 +2,7 @@
 layout: default
 title: Verify SDKs
 permalink: /instruct/verify-sdks/
-hashseal: "blake3:daa3ba03135951b7586ba8a39b4ce9190b89bbfa8124ec63261dfd18f88faa21"
+hashseal: "blake3:9464b41d16f3989794c372adda17013c67899492454efeec4497a8b2a7bbd627"
 ---
 
 # Verify SDKs (Tier-1, zero-dep)
@@ -23,5 +23,5 @@ Shared frozen vectors:
 - `verify/vectors/tree-v1.json` (12 cases)
 
 ```text
-Copyright (c) 2026 MonkeyKing.dev
+Copyright (c) 2026 Nathan A. Chadwick
 ```
